@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+<title>DESK WARS — Stationery RTS</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><text y='26' font-size='26'>✏️</text></svg>" />
+<link rel="stylesheet" href="./style.css" />
+<script type="importmap">
+{
+  "imports": {
+    "three": "./vendor/three/three.module.js"
+  }
+}
+</script>
+</head>
+<body>
+
+<div id="viewport">
+  <canvas id="gl"></canvas>
+  <canvas id="overlay"></canvas>
+</div>
+
+<!-- ══════════════════ MATCH SETUP ══════════════════ -->
+<div id="setup" class="screen">
+  <div class="setup-inner">
+    <header class="brand">
+      <h1>DESK<span>WARS</span></h1>
+      <p class="tagline">Stationery real-time strategy. The desk is the battlefield.</p>
+    </header>
+
+    <div class="setup-grid">
+
+      <section class="panel wide" data-group="mode">
+        <h2>Opponent</h2>
+        <div class="options opt-row" id="opt-mode">
+          <button class="opt selected" data-value="ai">
+            <span class="opt-title">1 Player — vs AI</span>
+            <span class="opt-desc">You command Graphite Blue. The desk's other end is run by the computer.</span>
+          </button>
+          <button class="opt" data-value="pvp">
+            <span class="opt-title">2 Players — Hot Seat</span>
+            <span class="opt-desc">Two commanders, one desk, one screen. Pass the mouse back and forth; the fog of war follows whoever is in command.</span>
+          </button>
+        </div>
+        <div id="pvp-options" class="mini-opts hidden">
+          <label>Handover
+            <select id="sel-handover">
+              <option value="free" selected>Free swap (F2 any time)</option>
+              <option value="timed">Timed turns</option>
+            </select>
+          </label>
+          <label>Turn length
+            <select id="sel-turn">
+              <option value="60">60 seconds</option>
+              <option value="90" selected>90 seconds</option>
+              <option value="120">2 minutes</option>
+              <option value="180">3 minutes</option>
+            </select>
+          </label>
+          <label>Blue commander
+            <input type="text" id="in-name0" value="Player 1" spellcheck="false" maxlength="16" />
+          </label>
+          <label>Red commander
+            <input type="text" id="in-name1" value="Player 2" spellcheck="false" maxlength="16" />
+          </label>
+        </div>
+      </section>
+
+      <section class="panel" data-group="difficulty" id="panel-difficulty">
+        <h2>AI Opponent</h2>
+        <div class="options" id="opt-difficulty">
+          <button class="opt" data-value="easy">
+            <span class="opt-title">Easy</span>
+            <span class="opt-desc">Slow reactions, sloppy build order, rarely tech-rushes. Good for learning the desk.</span>
+          </button>
+          <button class="opt selected" data-value="medium">
+            <span class="opt-title">Medium</span>
+            <span class="opt-desc">Expands, teches, sends coordinated waves and defends its factories.</span>
+          </button>
+          <button class="opt" data-value="hard">
+            <span class="opt-title">Hard</span>
+            <span class="opt-desc">Scouts you, counter-builds your composition, harasses your extractors, micros its army.</span>
+          </button>
+          <button class="opt" data-value="custom">
+            <span class="opt-title">Custom</span>
+            <span class="opt-desc">Tune the AI by hand.</span>
+          </button>
+        </div>
+        <div id="custom-sliders" class="sliders hidden">
+          <label>Reaction speed <input type="range" id="sl-reaction" min="0" max="100" value="55"><output>55</output></label>
+          <label>Resource efficiency <input type="range" id="sl-economy" min="0" max="100" value="55"><output>55</output></label>
+          <label>Aggression <input type="range" id="sl-aggression" min="0" max="100" value="55"><output>55</output></label>
+          <label>Tech focus <input type="range" id="sl-tech" min="0" max="100" value="55"><output>55</output></label>
+        </div>
+      </section>
+
+      <section class="panel" data-group="victory">
+        <h2>Win Condition</h2>
+        <div class="options" id="opt-victory">
+          <button class="opt selected" data-value="domination">
+            <span class="opt-title">Domination</span>
+            <span class="opt-desc">Raze the enemy HQ and every factory they own. Total control of the desk.</span>
+          </button>
+          <button class="opt" data-value="control">
+            <span class="opt-title">Desk Control</span>
+            <span class="opt-desc">Hold the majority of the desk's contested zones. First side to bank 4 minutes of majority wins.</span>
+          </button>
+          <button class="opt" data-value="annihilation">
+            <span class="opt-title">Annihilation</span>
+            <span class="opt-desc">Destroy every last enemy structure. No mercy, no leftovers.</span>
+          </button>
+        </div>
+        <div class="mini-opts">
+          <label>Starting resources
+            <select id="sel-start">
+              <option value="lean">Lean</option>
+              <option value="standard" selected>Standard</option>
+              <option value="rich">Rich</option>
+            </select>
+          </label>
+          <label>Game speed
+            <select id="sel-speed">
+              <option value="0.75">Slow</option>
+              <option value="1" selected>Normal</option>
+              <option value="1.5">Fast</option>
+              <option value="2">Blitz</option>
+            </select>
+          </label>
+          <label>Desk layout
+            <input type="text" id="in-seed" value="desk-01" spellcheck="false" />
+          </label>
+        </div>
+      </section>
+
+      <section class="panel wide" data-group="briefing">
+        <h2>Field Manual</h2>
+        <div class="briefing">
+          <div>
+            <h3>Camera</h3>
+            <ul>
+              <li><b>Right-drag</b> orbit · <b>Middle-drag</b> pan</li>
+              <li><b>Wheel</b> zoom · <b>WASD / arrows / screen edge</b> pan</li>
+              <li><b>Q / E</b> rotate · <b>F</b> focus selection · <b>Home</b> base</li>
+            </ul>
+          </div>
+          <div>
+            <h3>Command</h3>
+            <ul>
+              <li><b>Left-click / drag</b> select · <b>Shift</b> add to selection</li>
+              <li><b>Right-click</b> move, or attack an enemy</li>
+              <li><b>A</b> attack-move · <b>S</b> stop · <b>H</b> hold · <b>P</b> patrol</li>
+              <li><b>Ctrl+1..9</b> make group · <b>1..9</b> recall</li>
+            </ul>
+          </div>
+          <div>
+            <h3>Economy</h3>
+            <ul>
+              <li><b>Paper</b> funds infantry · <b>Ink</b> funds ranged</li>
+              <li><b>Batteries</b> gate tech · <b>Graphite</b> buys upgrades</li>
+              <li>Build <b>Extractors</b> on desk nodes to earn income</li>
+              <li>Build <b>Desk Trays</b> for population space</li>
+            </ul>
+          </div>
+          <div>
+            <h3>The desk itself</h3>
+            <ul>
+              <li>Stand on <b>book stacks</b> for range, damage and sight</li>
+              <li>Build a tower on a <b>water bottle</b>: 40% cheaper, tougher</li>
+              <li><b>Spilled pens and rulers</b> block movement — tape over them</li>
+              <li>Extractors extend your <b>build radius</b>; creep outward</li>
+            </ul>
+          </div>
+          <div>
+            <h3>Hot seat</h3>
+            <ul>
+              <li><b>F2</b> or the ⇄ button hands the desk over</li>
+              <li>Fog of war, HUD and control groups follow the commander</li>
+              <li><b>Timed turns</b> pause on a handover card between turns</li>
+              <li>Standing orders keep running while it isn't your turn</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <button id="btn-start" class="start-btn">Deploy to the desk</button>
+    <p class="footnote">Everything you see is built from cones, boxes and cylinders. Read the silhouettes.</p>
+  </div>
+</div>
+
+<!-- ══════════════════ IN-GAME HUD ══════════════════ -->
+<div id="hud" class="hidden">
+
+  <div id="topbar">
+    <div class="res-group">
+      <div class="res" id="res-paper" title="Paper — funds infantry and basic structures">
+        <i class="swatch paper"></i><span class="val">0</span><span class="rate">+0</span>
+      </div>
+      <div class="res" id="res-ink" title="Ink — funds ranged and precision units">
+        <i class="swatch ink"></i><span class="val">0</span><span class="rate">+0</span>
+      </div>
+      <div class="res" id="res-battery" title="Batteries — scarce; gates tech buildings and air">
+        <i class="swatch battery"></i><span class="val">0</span><span class="rate">+0</span>
+      </div>
+      <div class="res" id="res-graphite" title="Graphite — spent on upgrades at the Tech Lab">
+        <i class="swatch graphite"></i><span class="val">0</span><span class="rate">+0</span>
+      </div>
+      <div class="res" id="res-pop" title="Population — raise the cap with Desk Trays">
+        <i class="swatch pop"></i><span class="val">0/0</span>
+      </div>
+    </div>
+
+    <div class="top-center">
+      <div id="objective"></div>
+      <div id="control-bars"></div>
+    </div>
+
+    <div class="top-right">
+      <div id="commander" class="hidden"><i></i><b></b><em></em></div>
+      <div id="clock">0:00</div>
+      <div class="btn-row">
+        <button class="chip hidden" id="btn-swap" title="Hand over command (F2)">⇄</button>
+        <button class="chip" id="btn-speed" title="Game speed">1×</button>
+        <button class="chip" id="btn-sound" title="Sound">♪</button>
+        <button class="chip" id="btn-help" title="Controls (F1)">?</button>
+        <button class="chip" id="btn-pause" title="Pause (Esc)">❚❚</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="alerts"></div>
+
+  <div id="bottombar">
+    <div id="minimap-wrap">
+      <canvas id="minimap" width="300" height="200"></canvas>
+      <div id="minimap-legend"><span class="you">You</span><span class="foe">Enemy</span><span class="node">Node</span></div>
+    </div>
+
+    <div id="selection-panel">
+      <div id="sel-portrait"></div>
+      <div id="sel-info"></div>
+      <div id="sel-roster"></div>
+    </div>
+
+    <div id="command-card">
+      <div id="cc-tabs"></div>
+      <div id="cc-grid"></div>
+      <div id="cc-tip"></div>
+    </div>
+  </div>
+
+  <div id="placement-hint" class="hidden"></div>
+</div>
+
+<!-- ══════════════════ MODALS ══════════════════ -->
+<div id="modal-help" class="screen hidden">
+  <div class="modal">
+    <h2>Controls</h2>
+    <div class="help-cols" id="help-body"></div>
+    <button class="start-btn small" data-close>Back to the fight</button>
+  </div>
+</div>
+
+<div id="modal-tech" class="screen hidden">
+  <div class="modal wide-modal">
+    <h2>Sharpen Your Pencils <small>— research</small></h2>
+    <div id="tech-body"></div>
+    <button class="start-btn small" data-close>Close</button>
+  </div>
+</div>
+
+<div id="modal-handover" class="screen hidden">
+  <div class="modal handover">
+    <p class="handover-kicker">Hands off the desk</p>
+    <h2 id="handover-title">Pass to Crimson Ink</h2>
+    <p class="dim" id="handover-sub">The fog of war has switched sides. Only press ready when the other commander is holding the mouse.</p>
+    <div class="handover-swatch"><i id="handover-swatch"></i></div>
+    <button class="start-btn" id="btn-handover">I'm ready — resume</button>
+  </div>
+</div>
+
+<div id="modal-pause" class="screen hidden">
+  <div class="modal">
+    <h2>Paused</h2>
+    <p class="dim">The desk holds its breath.</p>
+    <div class="modal-actions">
+      <button class="start-btn small" id="btn-resume">Resume</button>
+      <button class="start-btn small ghost" id="btn-restart">Restart match</button>
+      <button class="start-btn small ghost" id="btn-quit">Quit to menu</button>
+    </div>
+  </div>
+</div>
+
+<div id="modal-end" class="screen hidden">
+  <div class="modal">
+    <h2 id="end-title">Victory</h2>
+    <p id="end-sub" class="dim"></p>
+    <div id="end-stats"></div>
+    <div class="modal-actions">
+      <button class="start-btn small" id="btn-again">Rematch</button>
+      <button class="start-btn small ghost" id="btn-menu">Main menu</button>
+    </div>
+  </div>
+</div>
+
+<div id="loading" class="screen">
+  <div class="loader">
+    <div class="pencil-spin"></div>
+    <p>Clearing the desk…</p>
+  </div>
+</div>
+
+<script type="module" src="./src/main.js"></script>
+</body>
+</html>
