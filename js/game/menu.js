@@ -209,10 +209,10 @@
 
       var best = G.best;
       if (best) {
-        line(fb, fb.h - 26 * scale,
+        line(fb, fb.h - 30 * scale,
           'FURTHEST: ' + best.name + ' - GATE ' + best.door, Math.max(1, scale - 1), 0.34, 71);
       }
-      line(fb, fb.h - 14 * scale, 'ARROWS / WASD TO CHOOSE   SPACE TO TAKE IT',
+      line(fb, fb.h - 18 * scale, 'ARROWS / WASD TO CHOOSE   SPACE TO TAKE IT',
         Math.max(1, scale - 1), 0.28, 73);
       return;
     }
@@ -269,7 +269,7 @@
       String(buf.replace(/[^A-Z]/g, '').length) + ' GATES BEFORE YOU START BORROWING.',
       Math.max(1, scale - 1), 0.34, 13);
 
-    line(fb, fb.h - 16 * scale, '[ ENTER ] GO OUT      [ ESC ] BACK',
+    line(fb, fb.h - 20 * scale, '[ ENTER ] GO OUT      [ ESC ] BACK',
       Math.max(1, scale - 1), 0.36, 17);
   };
 
