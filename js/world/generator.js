@@ -201,8 +201,14 @@
     /* --- markers: the dead, and the letters still on them ------------------
      * They sit off the road on purpose. Everything you need to keep walking
      * is a detour, and the detour is where the flat is worst. */
-    var markerCount = doorNum < 5 ? 0 : (doorNum < 30 ? 1 + rng.int(2) : 1 + rng.int(2));
-    if (doorNum >= 5 && rng.chance(0.30)) markerCount++;
+    /* Stones start at gate two, not gate five. Gate one is left clean so the
+     * first section is nothing but "walk to the lamp, pay, go through"; from
+     * two onward there is always at least one stone to rob, because a short
+     * name cannot survive four gates without one. A two-letter name -- which
+     * the name entry accepts -- used to be dead at gate two with the first
+     * stone three sections out of reach. */
+    var markerCount = doorNum < 2 ? 0 : 1 + rng.int(2);
+    if (doorNum >= 2 && rng.chance(0.30)) markerCount++;
     for (var mI = 0; mI < markerCount; mI++) {
       var spot = W.findSpot(x0, rng, 3, GATE_X - 2, 4, gh - 5);
       if (!spot) continue;
