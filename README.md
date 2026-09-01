@@ -103,6 +103,16 @@ and the Understudy's lamp. It is stippled in rather than switched on — the
 fraction of pixels that turn warm rises with the ember amount — so a lamp core
 reads as a halftone of orange dots thinning into grey.
 
+The gate lamps are the exception, and they are deliberately **cold**. Your lamp
+reaches about twelve metres and a section is twenty-six, so without a landmark
+you would be walking into a black flat with no idea which way forward is: every
+doorframe carries a lantern on its lintel, pushed past the top of the luminance
+ramp so the ordered dither cannot thin it away at range, and past the bloom
+threshold so it carries a halo from the far end of a section. Turning until you
+find it is the game's only compass. It also does a second job — yours is warm
+and so is the Understudy's, so *a warm light that is not in your hand is not a
+gate.*
+
 ### The stack
 
 Bayer ordered dither over a seven-step ramp, with the threshold field nudged

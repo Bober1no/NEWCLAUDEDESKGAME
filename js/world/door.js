@@ -20,6 +20,8 @@
   var POST_W = 0.15;
   var OPEN_ANGLE = 1.78;
 
+  Door._t = 0;
+
   function Door(num, x, y) {
     this.num = num;
     this.x = x;
@@ -34,6 +36,17 @@
     this.plate = S.Glyphs.plate(String(this.ledger), 4, 2);
     this.rattle = 0;
     this.hinge = 0;
+
+    /* Every gate carries a lamp on its lintel, and it is a dead cold white --
+     * the works hung them, and nothing out here has bothered to take them
+     * down. It is the only navigation aid in the game: your own lamp reaches
+     * twelve metres and a section is twenty-six, so without this you are
+     * walking into a black flat with no idea which way forward is.
+     *
+     * It also does a second job. Yours is warm and so is the Understudy's. A
+     * cold light is a gate. A warm light that is not in your hand is not. */
+    this.lampZ = 1.86;
+    this.lampFlick = 1;
   }
 
   Door.prototype.totalCost = function () { return this.toll + this.surcharge; };
@@ -46,6 +59,11 @@
   };
 
   Door.prototype.update = function (dt) {
+    /* a slow, tired guttering -- these have been burning a long time */
+    var t = this.num * 7.3 + (Door._t += dt);
+    this.lampFlick = 0.82 + S.M.noise2(t * 1.9, this.num * 3.1) * 0.30
+                          + S.M.noise2(t * 9.0, this.num) * 0.07;
+
     if (this.state === 'swinging') {
       /* heavy, and it fights you at the start. eases out, never eases in. */
       this.swing += dt * (0.35 + this.swing * 1.55);
@@ -187,6 +205,32 @@
 
     /* the threshold stone you cut your letter into */
     R.slab(fb, x - 0.34, y - 0.62, x - 0.34, y + 0.62, 0, 0.10, stoneShade);
+
+    /* the lamp on the lintel: a small housing and, inside it, the one thing
+     * on this flat you can see from the far end of a section */
+    var flick = this.lampFlick;
+    var housing = function (t, z, dist, out) {
+      out[0] = 0.18; out[1] = 0; out[2] = 0;
+    };
+    var glass = function (t, z, dist, out) {
+      /* The pane, with a soot-black frame round it so it has a shape rather
+       * than being a blob. The flame is pushed well over 1.0 on purpose: it
+       * has to clear the top of the ramp at twenty-five metres or the ordered
+       * dither thins it to nothing and the only landmark in the game
+       * disappears exactly when you need it. Over 1.0 it also clears the
+       * bloom threshold, which is what gives it a halo from far off. */
+      var edge = (t < 0.16 || t > 0.84 || z < 1.86 || z > 2.10);
+      if (edge) { out[0] = 0.11; out[1] = 0; out[2] = 0.04 * flick; return; }
+      out[0] = 0; out[1] = 0;
+      out[2] = (1.35 + S.M.noise2(t * 6, z * 6 + Door._t * 3) * 0.30) * flick;
+    };
+
+    post(fb, x, y, 0.075, 2.10, LINTEL_Z0, housing);
+    var gw = 0.17;
+    R.slab(fb, x - 0.10, y - gw, x - 0.10, y + gw, 1.80, 2.14, glass);
+    R.slab(fb, x + 0.10, y - gw, x + 0.10, y + gw, 1.80, 2.14, glass);
+    R.slab(fb, x - 0.10, y - gw, x + 0.10, y - gw, 1.80, 2.14, glass);
+    R.slab(fb, x - 0.10, y + gw, x + 0.10, y + gw, 1.80, 2.14, glass);
   };
 
   S.Door = Door;

@@ -71,7 +71,7 @@ SALT.TIERS = {
     bayer: 2,             /* dither matrix order          */
     bayerAnim: false,
     floorStep: 2,         /* floor pixels solved per 2px  */
-    lights: 1,
+    lights: 2,            /* yours, and the one on the gate */
     volumetric: 0,        /* raymarch steps, 0 = off      */
     volShift: 2,          /* haze buffer is w>>n by h>>n  */
     reflect: 0,           /* 0 none 1 flat 2 wave+depth   */

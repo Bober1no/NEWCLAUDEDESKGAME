@@ -97,6 +97,23 @@
 
     var budget = tier.lights - 1;
 
+    /* The gate lamps come first, before anything else can eat the budget.
+     * They are cold -- zero ember -- because a warm light out here that is
+     * not in your own hand means something else entirely. */
+    var gates = [S.World.door, S.World.nextDoor];
+    for (var g = 0; g < gates.length && budget > 0; g++) {
+      var gd = gates[g];
+      if (!gd) continue;
+      var gdist = M.dist(gd.x, gd.y, p.x, p.y);
+      /* Kept on a short radius and only added when you are near: the lamp
+       * housing's emissive is what makes the gate findable from across a
+       * section, so the light itself only has to make the pool you walk into.
+       * Every extra light is a per-pixel cost in every shading loop. */
+      if (gdist > 12.5) continue;
+      Ray.addLight(gd.x, gd.y, gd.lampZ, 0.92 * gd.lampFlick, 10.0, 0);
+      budget--;
+    }
+
     for (var i = 0; i < G.entities.length && budget > 0; i++) {
       var e = G.entities[i];
       if (e.kind === 'understudy') {
@@ -114,8 +131,8 @@
       }
     }
 
-    /* the threshold stone catches a little of the lamp back at you when you
-     * are close enough to pay -- the only diegetic affordance in the game */
+    /* the threshold stone catches a little of your own lamp back at you when
+     * you are close enough to pay */
     if (budget > 0 && S.World.door) {
       var d = S.World.door;
       var dist = M.dist(d.x, d.y, p.x, p.y);

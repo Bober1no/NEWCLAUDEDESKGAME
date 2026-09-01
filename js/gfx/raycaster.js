@@ -472,9 +472,14 @@
         if (alb < 0) continue;                       /* transparent */
 
         shade(wx, wy, z, 0.82);
-        var lum = _lum * alb + _slabOut[2];
+        var lum = _lum * alb;
         var emb = Math.max(_emb * 0.6, _slabOut[1]);
         if (fogT > 0) { lum = lum + (HAZE - lum) * fogT; emb *= (1 - fogT); }
+        /* Emissive is added after the haze, and only lightly attenuated by it.
+         * Something bright because of what it is -- a gate lamp, the foam on a
+         * breaking wave -- has to stay legible across the whole flat, or the
+         * warning it carries arrives too late to be a warning. */
+        if (_slabOut[2] > 0) lum += _slabOut[2] * (1 - fogT * 0.45);
 
         L[idx] = lum;
         E[idx] = emb;

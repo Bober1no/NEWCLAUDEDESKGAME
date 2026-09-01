@@ -84,7 +84,8 @@
     S.PostFX.invert = 0;
     G.planSection();
     G.mode = 'play';
-    G.hint = { text: 'WALK. THE GATE IS THAT WAY.', t: 0, dur: 6 };
+    /* stays up until the first gate is actually paid */
+    G.hint = { text: 'FIND THE LAMP ON THE GATE. WALK TO IT.', t: 0, dur: 9999, pri: 1 };
   };
 
   G.planSection = function () {
@@ -365,6 +366,7 @@
     S.Sound.toll();
     G.spend(cost, null);
     door.open();
+    if (G.hint && G.hint.dur > 900) G.hint = null;   /* the tutorial line has done its job */
     S.Sound.doorGroan();
     G.say(S.Ledger.legendAt(door.num) + ' COME THIS FAR', 4, 1);
   };

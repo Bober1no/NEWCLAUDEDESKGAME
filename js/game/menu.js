@@ -24,18 +24,19 @@
     'A LINE OF DOORFRAMES STANDS IN THE LEVEES.',
     'EACH ONE COSTS A LETTER OF YOUR NAME.',
     '',
+    'EVERY GATE CARRIES A COLD WHITE LAMP ON ITS LINTEL.',
+    'YOURS REACHES TWELVE METRES; A SECTION IS TWENTY-SIX.',
+    'THAT LAMP IS HOW YOU FIND THE WAY OUT --',
+    'TURN UNTIL YOU SEE IT.',
+    'A WARM LIGHT NOT IN YOUR HAND IS NOT A GATE.',
+    '',
     'THE NUMBER CUT INTO A DOOR IS NOT ITS POSITION.',
-    'IT IS HOW MANY PEOPLE HAVE BEEN THROUGH IT,',
-    'AND IT GOES DOWN.',
+    'IT IS HOW MANY PEOPLE HAVE BEEN THROUGH IT.',
     '',
     'LETTERS TAKEN OFF OTHER PEOPLE ARE SPENT FIRST.',
     'WHEN THOSE RUN OUT THE FLAT STARTS ON YOUR OWN',
     'NAME, FROM THE BACK. AT NOTHING LEFT, YOU ARE',
-    'SOMETHING THE LINE CAN FILE.',
-    '',
-    'PAST THE GATE THAT READS NONE THERE IS A STONE',
-    'WITH A NUMBER WHERE THE NAME SHOULD BE.',
-    'YOU CAME OUT TO TAKE THE NAME BACK.'
+    'SOMETHING THE LINE CAN FILE.'
   ];
 
   var CONTROLS = [
@@ -277,11 +278,21 @@
   Menu.drawHowto = function (fb, G, time, scale) {
     scrim(fb, 0.66);
     var s1 = Math.max(1, scale - 1);
-    var step = (G6.H + 2) * s1;
-    var y = 5 * scale;
 
+    /* The page sizes its own line spacing to whatever is left after the
+     * header, the rule and the BACK item. Hard-coding a step means the next
+     * sentence anybody adds runs off the bottom of the frame. */
+    var headH = G6.H * scale + 5 * scale;
+    var backH = G6.H * scale + 8 * scale;
+    var ruleH = 7 * scale;
+    var avail = fb.h - 5 * scale - headH - ruleH - backH;
+    var rowN = HOWTO.length + CONTROLS.length;
+    var step = Math.min((G6.H + 2) * s1, Math.floor(avail / rowN));
+    if (step < G6.H * s1 + 1) step = G6.H * s1 + 1;
+
+    var y = 5 * scale;
     line(fb, y, 'WHAT YOU ARE DOING', scale, 0.90, 3);
-    y += G6.H * scale + 5 * scale;
+    y += headH;
 
     /* the prose is left-aligned inside a centred column: centring every line
      * of a paragraph makes it read like a poster, not like an instruction */

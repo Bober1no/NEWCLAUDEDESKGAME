@@ -146,14 +146,21 @@
       H.centered(fb, keyY, '[ SPACE ]', s3, 0.34, 1);
     }
 
-    /* the door's own count, read off the ledger when you are close enough */
+    /* The gate's own count, at the top of frame whenever the gate is anywhere
+     * in front of you. This is the compass: your lamp reaches twelve metres
+     * and a section is twenty-six, so turning until this line appears is how
+     * you find which way forward is. It is also the only number in the game
+     * that matters, so it earns the space. */
     var d = S.World.door;
     if (d && G.mode === 'play') {
-      var dd = M.dist(d.x, d.y, G.player.x, G.player.y);
-      if (dd < 7.5) {
-        var f = M.sat((7.5 - dd) / 3.0);
+      var bearing = Math.atan2(d.y - G.player.y, d.x - G.player.x);
+      var off = Math.abs(M.angDiff(G.player.ang, bearing));
+      if (off < 0.95) {
+        var dd = M.dist(d.x, d.y, G.player.x, G.player.y);
+        var f = 1 - M.smoothstep(0.55, 0.95, off);
+        f *= 0.45 + 0.55 * M.sat((22 - dd) / 14);
         H.centered(fb, 8 * scale, S.Ledger.legendAt(d.num) + ' COME THIS FAR',
-          Math.max(1, scale - 1), 0.50, f);
+          Math.max(1, scale - 1), 0.62, f);
       }
     }
 
