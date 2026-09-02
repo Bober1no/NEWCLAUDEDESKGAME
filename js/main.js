@@ -70,6 +70,8 @@
       S.Menu.update(dt, G);
       /* the flat keeps drifting behind the menu */
       S.Music.setTension(0.05);
+    } else if (m === 'outro') {
+      G.update(dt);            /* no input: the walk out is not interactive */
     } else if (m === 'pause' || m === 'dead' || m === 'win') {
       S.Menu.update(dt, G);
       G.update(dt);

@@ -153,7 +153,7 @@
 
     /* The menus are not a separate screen. They are the same flat with the
      * camera drifting through it, which is why the title card has weather. */
-    var worldCam = (G.mode === 'play' || G.mode === 'read' ||
+    var worldCam = (G.mode === 'play' || G.mode === 'read' || G.mode === 'outro' ||
                     G.mode === 'pause' || G.mode === 'dead' || G.mode === 'win');
 
     fb.clear(0);

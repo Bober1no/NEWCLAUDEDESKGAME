@@ -8,7 +8,7 @@ SALT.TITLE = 'SALT LINE';
 /* Bumped by hand on every push. It is printed in the corner of the title
  * screen so "it still doesn't work" can be answered by reading one number
  * instead of guessing whether a copy is stale. */
-SALT.BUILD = 9;
+SALT.BUILD = 11;
 
 /* ---- the palette. six greys and one ember. nothing else is ever drawn. ---- */
 SALT.PALETTE = {

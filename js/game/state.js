@@ -265,7 +265,26 @@
   G.finish = function (kind) {
     if (G.ending) return;
     G.ending = kind;
-    G.mode = (kind === 'out') ? 'win' : 'dead';
+
+    if (kind === 'out') {
+      /* The ledger closes.
+       *
+       * Every gate on this line is cut with the number of people who have been
+       * through it, and the last six all read NONE. You just went through one.
+       * Rather than cutting to a card, the walk stops, turns you round, and
+       * lets you watch that number become a 1 -- in the world, in the carved
+       * font, on the door you paid for. It is the only thing this game has
+       * been counting for sixty-six gates, and it should be the last thing
+       * you look at. */
+      G.mode = 'outro';
+      G.outroT = 0;
+      G.outroCut = false;
+      G.outroShut = false;
+      var p = G.player;
+      p.speed = 0; p.shoveX = 0; p.shoveY = 0;
+    } else {
+      G.mode = 'dead';
+    }
     G.deathT = 0;
     S.Music.setTension(kind === 'out' ? 0.1 : 1);
     S.Sound.stopBeds();
@@ -301,6 +320,9 @@
   /* ---- the tick ----------------------------------------------------------- */
   G.update = function (dt) {
     G.t += dt;
+
+    if (G.mode === 'outro') { G.updateOutro(dt); return; }
+
     if (G.mode !== 'play' && G.mode !== 'read') {
       if (G.mode === 'dead' || G.mode === 'win') G.deathT += dt;
       N.updateCrumbs(dt);
@@ -335,6 +357,59 @@
     N.updateCrumbs(dt);
     G.updateHint(dt);
     G.updateTension(dt);
+  };
+
+  /* ---- the walk out --------------------------------------------------------
+   * Six seconds. You stop, you turn round, and the gate behind you re-cuts
+   * itself from NONE to ONE while you watch. Then the card.
+   */
+  G.updateOutro = function (dt) {
+    G.outroT += dt;
+    var p = G.player, d = W.door;
+
+    G.updateLamp(dt);
+    N.updateCrumbs(dt);
+    S.Music.setTension(Math.max(0, 0.35 - G.outroT * 0.06));
+
+    if (d) {
+      d.update(dt);
+
+      /* Walk back onto the gate's axis and square up to it.
+       *
+       * This is the one place in the game the camera is taken off the player,
+       * and it is taken for a reason: the number is cut into the panel, and
+       * from wherever you happened to stop walking it is small, oblique and
+       * usually behind a rake. An ending you cannot read is not an ending. */
+      var tx = d.x + 4.4, ty = d.y;
+      var k = 1 - Math.exp(-dt * 0.85);
+      p.x += (tx - p.x) * k;
+      p.y += (ty - p.y) * k;
+
+      var want = Math.atan2(d.y - p.y, d.x - p.x);
+      p.ang += M.angDiff(p.ang, want) * (1 - Math.exp(-dt * 1.5));
+
+      /* it shuts behind you, so the number is facing you again */
+      if (!G.outroShut && G.outroT > 1.6) {
+        G.outroShut = true;
+        d.shutAgain();
+        S.Sound.doorGroan();
+      }
+
+      /* and then, while you are looking at it, it stops reading NONE.
+       * The digit is padded to four slots so it is cut at the same size as
+       * every other number on the line -- the plate is stretched across a
+       * fixed span of the panel, so a bare "1" would smear across the whole
+       * board and read as a mark rather than a number. */
+      if (!G.outroCut && G.outroT > 4.0) {
+        G.outroCut = true;
+        d.ledger = 1;
+        d.plate = S.Glyphs.plate(' 1 ', 3, 2);
+        S.PostFX.kick(2.0);
+        S.Sound.toll();
+      }
+    }
+
+    if (G.outroT > 8.4) { G.mode = 'win'; G.deathT = 0; }
   };
 
   G.updateHint = function (dt) {

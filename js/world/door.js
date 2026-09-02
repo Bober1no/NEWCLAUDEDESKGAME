@@ -58,6 +58,14 @@
     return true;
   };
 
+  /* Swing it back. Only the walk-out uses this: the last gate shuts behind
+   * you so that the number cut into its panel is facing you again when it
+   * changes. */
+  Door.prototype.shutAgain = function () {
+    if (this.state === 'shut' || this.state === 'closing') return;
+    this.state = 'closing';
+  };
+
   Door.prototype.update = function (dt) {
     /* a slow, tired guttering -- these have been burning a long time */
     var t = this.num * 7.3 + (Door._t += dt);
@@ -68,6 +76,10 @@
       /* heavy, and it fights you at the start. eases out, never eases in. */
       this.swing += dt * (0.35 + this.swing * 1.55);
       if (this.swing >= 1) { this.swing = 1; this.state = 'open'; }
+    }
+    if (this.state === 'closing') {
+      this.swing -= dt * (0.30 + this.swing * 1.15);
+      if (this.swing <= 0) { this.swing = 0; this.state = 'shut'; this.rattle = 1; }
     }
     this.rattle *= Math.exp(-dt * 6);
   };
@@ -162,29 +174,32 @@
       var pw = plate.w, ph = plate.h, bits = plate.bits;
       var swing = this.swing;
 
+      /* The ledger number, cut into the boards. It is the single most
+       * important thing on the screen when you are standing at a gate, so the
+       * cut goes almost black and the upper lip of it goes almost white -- it
+       * has to survive being read at eight metres in the dark.
+       *
+       * It is cut on BOTH faces. A count of who has been through belongs to
+       * the gate, not to one approach, and the walk-out ending has you turned
+       * round looking at the back of the last door while its number changes.
+       * Only carving the front made that ending a blank plank. */
+      function cutNumber(u, vv, v) {
+        if (u < 0 || u >= 1 || vv < 0 || vv >= 1) return v;
+        var bxp = (u * pw) | 0, byp = (vv * ph) | 0;
+        if (bits[byp * pw + bxp]) return v * 0.16;
+        var lx = ((u * pw) - 1) | 0, ly = ((vv * ph) - 1) | 0;
+        if (lx >= 0 && ly >= 0 && bits[ly * pw + lx]) return Math.min(1.25, v * 2.1);
+        return v;
+      }
+
       var panelShade = function (t, z, dist, out) {
         var band = z * 4.6;
         var f = band - Math.floor(band);
         var v = 0.52 + S.M.noise2(t * 11 + self.num, z * 17) * 0.30;
         if (f < 0.11) v *= 0.40;
         if (t < 0.035 || t > 0.965 || z < 0.05 || z > PANEL_H - 0.05) v *= 0.52;
-
-        /* The ledger number, cut into the boards. It is the single most
-         * important thing on the screen when you are standing at a gate, so
-         * the cut goes almost black and the upper lip of it goes almost
-         * white -- it has to survive being read at eight metres in the dark. */
-        var u = (t - 0.09) / 0.82;
-        var vv = (1.56 - z) / 0.76;
-        if (u >= 0 && u < 1 && vv >= 0 && vv < 1) {
-          var bxp = (u * pw) | 0, byp = (vv * ph) | 0;
-          if (bits[byp * pw + bxp]) {
-            v *= 0.16;
-          } else {
-            var lx = ((u * pw) - 1) | 0, ly = ((vv * ph) - 1) | 0;
-            if (lx >= 0 && ly >= 0 && bits[ly * pw + lx]) v = Math.min(1.25, v * 2.1);
-          }
-        }
-        out[0] = v; out[1] = 0;
+        out[0] = cutNumber((t - 0.09) / 0.82, (1.56 - z) / 0.76, v);
+        out[1] = 0;
       };
 
       R.slab(fb, _pe[0], _pe[1], _pe[2], _pe[3], 0.02, PANEL_H, panelShade);
@@ -196,10 +211,12 @@
       nx = nx / nl * 0.055; ny = ny / nl * 0.055;
       R.slab(fb, _pe[0] + nx, _pe[1] + ny, _pe[2] + nx, _pe[3] + ny, 0.02, PANEL_H,
         function (t, z, dist, out) {
-          var v = 0.30 + S.M.noise2(t * 9, z * 15) * 0.22;
+          var v = 0.34 + S.M.noise2(t * 9, z * 15) * 0.24;
           var band = z * 4.6; var f = band - Math.floor(band);
           if (f < 0.11) v *= 0.45;
-          out[0] = v; out[1] = 0;
+          /* mirrored in u, so it reads the right way round from behind */
+          out[0] = cutNumber(1 - (t - 0.09) / 0.82, (1.56 - z) / 0.76, v);
+          out[1] = 0;
         });
     }
 
