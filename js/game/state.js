@@ -151,9 +151,21 @@
     if (cp && cp.gate > 1) { cp.exact = true; return cp; }
 
     var best = G.loadBest();
-    if (!best || !best.door || best.door <= 1) return null;
+    if (best && best.door > 1) {
+      return G.buildResume(Math.min(best.door, S.K.MAX_DOORS), best.name || 'WALKER',
+                           best.robbed || 0);
+    }
 
-    var raw = (best.name || 'WALKER');
+    /* The fixed way back onto the deep line.
+     *
+     * localStorage is refused on file:// in some Chrome configurations, which
+     * is exactly where this game is meant to be played -- so neither the
+     * checkpoint nor the furthest-gate record can be relied on to survive a
+     * reload. This entry never touches storage, so it is always there. */
+    return G.buildResume(65, 'AARAV PA', 0);
+  };
+
+  G.buildResume = function (gate, raw, robbed) {
     var own = [];
     for (var i = 0; i < raw.length; i++) {
       var c = raw.charAt(i);
@@ -162,11 +174,11 @@
     return {
       exact: false,
       seed: (Math.random() * 0xffffffff) >>> 0,
-      gate: Math.min(best.door, S.K.MAX_DOORS),
+      gate: gate,
       raw: raw,
       own: own,
       stolen: [],
-      robbed: best.robbed || 0,
+      robbed: robbed,
       haveTarget: false,
       targetName: ''
     };
