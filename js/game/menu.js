@@ -118,14 +118,21 @@
     if (G.mode === 'title') {
       if (Menu.page === 'quality') return Menu.tierItems(G);
       if (Menu.page === 'howto') return [{ label: 'BACK', go: function () { Menu.open('title'); } }];
-      return [
-        { label: 'WALK OUT', go: function () {
-            G.mode = 'name';
-            S.Input.beginCapture('', 14);
-          } },
-        { label: 'THE THREE TIDES', go: function () { Menu.open('quality'); } },
-        { label: 'WHAT YOU ARE DOING', go: function () { Menu.open('howto'); } }
-      ];
+      var top = [];
+      var rp = G.resumePoint();
+      if (rp) {
+        top.push({
+          label: 'BACK TO GATE ' + rp.gate,
+          go: function () { G.newRun(rp.raw, rp.seed, rp); }
+        });
+      }
+      top.push({ label: 'WALK OUT', go: function () {
+        G.mode = 'name';
+        S.Input.beginCapture('', 14);
+      } });
+      top.push({ label: 'THE THREE TIDES', go: function () { Menu.open('quality'); } });
+      top.push({ label: 'WHAT YOU ARE DOING', go: function () { Menu.open('howto'); } });
+      return top;
     }
     if (G.mode === 'pause') {
       if (Menu.page === 'quality') return Menu.tierItems(G);
@@ -137,8 +144,8 @@
     }
     if (G.mode === 'dead' || G.mode === 'win') {
       var out = [];
-      var cp = G.loadCheckpoint();
-      if (G.ending !== 'out' && cp && cp.gate > 1) {
+      var cp = (G.ending !== 'out') ? G.resumePoint() : null;
+      if (cp) {
         out.push({
           label: 'BACK TO GATE ' + cp.gate,
           go: function () { G.newRun(cp.raw, cp.seed, cp); }

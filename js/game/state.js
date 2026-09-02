@@ -138,6 +138,40 @@
     } catch (e) { return null; }
   };
 
+  /* What the menus offer as a way back in.
+   *
+   * A real checkpoint if there is one -- exact name, exact borrowed letters,
+   * exact everything. Failing that, the furthest-gate record, which is older
+   * than the checkpoint system and holds only a gate, a name and a robbed
+   * count: that comes back as a fresh walk starting at that gate, with the
+   * whole name and no borrowed letters, because a run reconstructed from a
+   * scoreboard row is a new walk wearing an old number. */
+  G.resumePoint = function () {
+    var cp = G.loadCheckpoint();
+    if (cp && cp.gate > 1) { cp.exact = true; return cp; }
+
+    var best = G.loadBest();
+    if (!best || !best.door || best.door <= 1) return null;
+
+    var raw = (best.name || 'WALKER');
+    var own = [];
+    for (var i = 0; i < raw.length; i++) {
+      var c = raw.charAt(i);
+      if (c >= 'A' && c <= 'Z') own.push(i);
+    }
+    return {
+      exact: false,
+      seed: (Math.random() * 0xffffffff) >>> 0,
+      gate: Math.min(best.door, S.K.MAX_DOORS),
+      raw: raw,
+      own: own,
+      stolen: [],
+      robbed: best.robbed || 0,
+      haveTarget: false,
+      targetName: ''
+    };
+  };
+
   G.planSection = function () {
     var rng = M.rng((G.seed ^ (W.doorNum * 0x27d4eb2f)) >>> 0);
     var plan = S.Director.plan(W.doorNum, G, rng);
