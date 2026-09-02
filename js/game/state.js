@@ -50,11 +50,21 @@
   };
 
   /* ---- lifecycle --------------------------------------------------------- */
-  G.newRun = function (name, seed) {
+  G.newRun = function (name, seed, cp) {
     G.seed = (seed || ((Math.random() * 0xffffffff) >>> 0)) >>> 0;
     N.set(name);
-    W.init(G.seed, 1);
+    W.init(G.seed, (cp && cp.gate) || 1);
     S.Director.reset();
+
+    if (cp) {
+      /* Put the name back the way it was when you walked into this gate:
+       * N.set rebuilt every letter, so drop the ones that were already gone. */
+      N.own = N.own.filter(function (o) { return cp.own.indexOf(o.i) >= 0; });
+      N.stolen = cp.stolen.map(function (st) { return { ch: st.ch, from: st.from, t: 0 }; });
+    } else {
+      G.checkpoint = null;
+      try { window.localStorage.removeItem('saltline.checkpoint'); } catch (e) {}
+    }
 
     var p = G.player;
     p.x = 3.2; p.y = W.entryY + 1; p.ang = 0;
@@ -68,24 +78,64 @@
     G.hint = null;
     G.focus = null;
     G.reading = null;
-    G.robbed = 0;
+    G.robbed = cp ? cp.robbed : 0;
     G.choir = false;
     G.lampDesync = 0;
     G.tallyMarkText = null;
-    G.haveTarget = false;
+    G.haveTarget = cp ? !!cp.haveTarget : false;
+    G.targetName = cp ? (cp.targetName || '') : '';
     G.ending = null;
     G.doorsPassed = 0;
     G.runT = 0;
     G.introT = 0;
     G.deathT = 0;
 
-    T.reset(1);
+    T.reset(W.doorNum);
     S.PostFX.pressure = 0;
     S.PostFX.invert = 0;
     G.planSection();
     G.mode = 'play';
-    /* stays up until the first gate is actually paid */
-    G.hint = { text: 'FIND THE LAMP ON THE GATE. WALK TO IT.', t: 0, dur: 9999, pri: 1 };
+    if (cp) {
+      G.markCheckpoint();
+      G.say('BACK ON THE LINE AT GATE ' + W.doorNum, 5, 1);
+    } else {
+      /* stays up until the first gate is actually paid */
+      G.hint = { text: 'FIND THE LAMP ON THE GATE. WALK TO IT.', t: 0, dur: 9999, pri: 1 };
+    }
+  };
+
+  /* ---- the way back --------------------------------------------------------
+   * Taken by the Understudy at gate 65 with eighty-five stones behind you, the
+   * fiction says you are gone. Making somebody re-walk sixty-five gates to test
+   * that is not a cost worth charging, so the flat keeps the gate you last paid
+   * for and the death card offers it back. Written every crossing, so it is
+   * always a state you were actually alive in.
+   */
+  G.checkpoint = null;
+
+  G.markCheckpoint = function () {
+    var own = [];
+    for (var i = 0; i < N.own.length; i++) own.push(N.own[i].i);
+    var cp = {
+      seed: G.seed,
+      gate: W.doorNum,
+      raw: N.raw,
+      own: own,
+      stolen: N.stolen.map(function (st) { return { ch: st.ch, from: st.from }; }),
+      robbed: G.robbed,
+      haveTarget: G.haveTarget,
+      targetName: G.targetName
+    };
+    G.checkpoint = cp;
+    try { window.localStorage.setItem('saltline.checkpoint', JSON.stringify(cp)); } catch (e) {}
+  };
+
+  G.loadCheckpoint = function () {
+    if (G.checkpoint) return G.checkpoint;
+    try {
+      var raw = window.localStorage.getItem('saltline.checkpoint');
+      return raw ? JSON.parse(raw) : null;
+    } catch (e) { return null; }
   };
 
   G.planSection = function () {
@@ -163,6 +213,10 @@
     S.Sound.stopBeds();
     S.Sound.choirStop();
     G.saveBest();
+    if (kind === 'out') {
+      G.checkpoint = null;
+      try { window.localStorage.removeItem('saltline.checkpoint'); } catch (e) {}
+    }
   };
 
   /* ---- persistence (file:// may refuse it; that is fine) ------------------ */
@@ -515,6 +569,7 @@
     G.doorsPassed++;
     T.reset(W.doorNum);
     G.planSection();
+    G.markCheckpoint();
 
     if (W.doorNum === 62 && !G.haveTarget) {
       G.say('THE STONE YOU CAME FOR IS IN THIS ONE', 7, 4);

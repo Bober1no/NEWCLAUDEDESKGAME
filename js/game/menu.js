@@ -136,10 +136,17 @@
       ];
     }
     if (G.mode === 'dead' || G.mode === 'win') {
-      return [
-        { label: 'WALK OUT AGAIN', go: function () { G.mode = 'name'; Menu.page = null; S.Input.beginCapture(S.Name.raw, 14); } },
-        { label: 'STOP HERE', go: function () { G.mode = 'title'; Menu.open('title'); S.Sound.startBeds(); } }
-      ];
+      var out = [];
+      var cp = G.loadCheckpoint();
+      if (G.ending !== 'out' && cp && cp.gate > 1) {
+        out.push({
+          label: 'BACK TO GATE ' + cp.gate,
+          go: function () { G.newRun(cp.raw, cp.seed, cp); }
+        });
+      }
+      out.push({ label: 'WALK OUT AGAIN', go: function () { G.mode = 'name'; Menu.page = null; S.Input.beginCapture(S.Name.raw, 14); } });
+      out.push({ label: 'STOP HERE', go: function () { G.mode = 'title'; Menu.open('title'); S.Sound.startBeds(); } });
+      return out;
     }
     return [];
   };
