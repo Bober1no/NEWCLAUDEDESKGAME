@@ -229,6 +229,12 @@
       }
       line(fb, fb.h - 18 * scale, 'ARROWS / WASD TO CHOOSE   SPACE TO TAKE IT',
         Math.max(1, scale - 1), 0.28, 73);
+
+      /* build stamp, bottom right */
+      G6.draw(fb, fb.w - 4 * scale, fb.h - 9 * scale, 'BUILD ' + S.BUILD, {
+        scale: Math.max(1, scale - 1), lum: 0.30, align: 'right',
+        carve: 0.8, track: 1, seed: 199
+      });
       return;
     }
 

@@ -5,6 +5,11 @@ var SALT = (typeof SALT !== 'undefined') ? SALT : {};
 
 SALT.TITLE = 'SALT LINE';
 
+/* Bumped by hand on every push. It is printed in the corner of the title
+ * screen so "it still doesn't work" can be answered by reading one number
+ * instead of guessing whether a copy is stale. */
+SALT.BUILD = 8;
+
 /* ---- the palette. six greys and one ember. nothing else is ever drawn. ---- */
 SALT.PALETTE = {
   /* luminance ramp, darkest -> lightest */
