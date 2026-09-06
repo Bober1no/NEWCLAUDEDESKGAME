@@ -186,7 +186,6 @@
     var capitalPrice = kappa;
 
     var pick = evaluated[0] || { actionId: 'hold', cohort: 'all', n: 0, cost: 0, score: baseScore, violations: 0, status: 'legal' };
-    if (SB.DEBUG_RANK) SB.DEBUG_RANK(legal);
     return {
       pick: pick,
       baseScore: baseScore,
