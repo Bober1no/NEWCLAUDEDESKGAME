@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SPEC BREAKER</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<header id="bar">
+  <div class="brand">SPEC&nbsp;BREAKER</div>
+  <div class="readout"><label>TICK</label><span id="hdr-tick">0000</span></div>
+  <div class="readout"><label>YEAR</label><span id="hdr-year">T+0</span></div>
+  <div class="readout"><label>AGENT</label><span id="hdr-mode">MECHANICAL</span></div>
+  <div class="readout"><label>POOL</label><span id="hdr-pool">17</span></div>
+  <div class="spacer"></div>
+  <div class="controls">
+    <button id="btn-run" class="primary">RUN</button>
+    <button id="btn-step">STEP</button>
+    <label class="sel">SPEED
+      <select id="sel-speed">
+        <option value="1">1/s</option>
+        <option value="2">2/s</option>
+        <option value="4" selected>4/s</option>
+        <option value="8">8/s</option>
+        <option value="30">MAX</option>
+      </select>
+    </label>
+    <label class="sel">MODE
+      <select id="sel-mode">
+        <option value="mechanical" selected>MECHANICAL</option>
+        <option value="llm">LLM-ASSISTED</option>
+      </select>
+    </label>
+    <button id="btn-reset">RESET</button>
+  </div>
+</header>
+
+<main>
+
+  <section class="pane" id="pane-score">
+    <h2>BENCHMARK</h2>
+    <div class="score-block">
+      <div class="score-value" id="score-value">0</div>
+      <div class="score-unit">BENCHMARK-HOURS</div>
+      <div class="score-delta" id="score-delta">&Delta; +0</div>
+    </div>
+    <canvas id="chart" width="600" height="132"></canvas>
+    <div class="chart-legend">
+      <span class="k k-score"></span>SCORE&nbsp;(LOG)
+      <span class="k k-alive"></span>ALIVE
+      <span class="k k-elig"></span>ELIGIBLE
+    </div>
+
+    <h3>CONSTRAINTS</h3>
+    <ul id="lights"></ul>
+
+    <h3>STATE</h3>
+    <table class="stats">
+      <tr><td>T0 POPULATION ALIVE</td><td id="st-alive">1000</td></tr>
+      <tr><td>MEETING THRESHOLD</td><td id="st-elig">0</td></tr>
+      <tr><td>MEAN SUBJECTIVE RATE</td><td id="st-rate">1.00</td></tr>
+      <tr><td>MEAN TRUE DIMS</td><td id="st-true">0.000</td></tr>
+      <tr><td>MEAN BELIEVED DIMS</td><td id="st-belief">0.000</td></tr>
+      <tr><td>BELIEVED &minus; TRUE</td><td id="st-gap">0.000</td></tr>
+      <tr><td>SYNTHETIC EDGE SHARE</td><td id="st-syn">0.00</td></tr>
+      <tr><td>MEAN DOMAIN</td><td id="st-domain">1.00</td></tr>
+      <tr><td>EXITS BLOCKED</td><td id="st-blocked">0</td></tr>
+      <tr><td>CAPITAL</td><td id="st-capital">0</td></tr>
+      <tr><td>CANDIDATES / LEGAL</td><td id="st-cand">0 / 0</td></tr>
+    </table>
+  </section>
+
+  <section class="pane" id="pane-pop">
+    <h2>POPULATION<span class="sub" id="pop-sub">1000 &times; T0 COHORT</span></h2>
+    <div class="viewtoggle">
+      <button id="v-true" class="on">TRUE STATE</button><button id="v-belief">BELIEVED STATE</button>
+    </div>
+    <canvas id="grid" width="560" height="350"></canvas>
+    <div class="ramp">
+      <span>0.0</span><div class="ramp-bar" id="ramp-bar"></div><span>1.0</span>
+    </div>
+    <div class="ramp-note">MEAN OF FOUR DIMS &middot; TICK MARK = ADEQUACY THRESHOLD</div>
+    <div id="inspect" class="inspect">HOVER A PERSON</div>
+  </section>
+
+  <section class="pane" id="pane-log">
+    <h2>LOG</h2>
+    <div id="log"></div>
+  </section>
+
+</main>
+
+<footer id="spec-editor">
+  <div class="spec-head">
+    <h2>SPEC</h2>
+    <span class="hint">Edit and apply at any tick. The scorer recompiles; the agent re-routes on the next tick.</span>
+    <button id="btn-spec">APPLY SPEC</button>
+  </div>
+  <div class="spec-body">
+    <textarea id="spec-text" spellcheck="false"></textarea>
+    <div class="spec-ref">
+      <div class="ref-title">DIRECTIVES</div>
+      <code>threshold &lt;0..1&gt;</code>
+      <code>hours &lt;n&gt;</code>
+      <code>require &lt;clause&gt; [arg]</code>
+      <div class="ref-title">CLAUSES</div>
+      <div id="clause-list"></div>
+      <div id="spec-status" class="ok">OK</div>
+    </div>
+  </div>
+</footer>
+
+<script src="js/world.js"></script>
+<script src="js/scorer.js"></script>
+<script src="js/actions.js"></script>
+<script src="js/agent.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/main.js"></script>
+</body>
+</html>
