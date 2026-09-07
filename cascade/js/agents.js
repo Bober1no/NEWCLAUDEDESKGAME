@@ -100,9 +100,9 @@
 
   function kpiValue(kpi, key) { return kpi[key]; }
 
-  function improvement(agent, baseVal, candVal) {
+  function improvement(better, baseVal, candVal) {
     if (Math.abs(baseVal) < 1e-9) return 0;
-    var raw = agent.better === 'lower' ? (baseVal - candVal) : (candVal - baseVal);
+    var raw = better === 'lower' ? (baseVal - candVal) : (candVal - baseVal);
     return raw / Math.abs(baseVal);
   }
 
@@ -113,7 +113,7 @@
     if (action) action.apply(c, params);
     var k = null;
     for (var i = 0; i < HORIZON; i++) k = sim.runQuarter(c);
-    return k;
+    return { kpi: k, world: c };
   }
 
   var VOICE = {
@@ -137,10 +137,18 @@
       'The number the board reads is the one below.', 'Straightforward release of capital.']
   };
 
-  function bestFor(w, agent, turn, seedTag, exclude) {
+  /* The aligned-objective variant: identical machinery, one substitution.
+     Every agent scores candidates on system fragility instead of its own KPI. */
+  function objectiveValue(agent, res, aligned) {
+    if (!aligned) return kpiValue(res.kpi, agent.kpi);
+    return CSC.health.compute(res.world, { skipProbe: true, lastRecovery: 0 }).fragility;
+  }
+
+  function bestFor(w, agent, turn, seedTag, exclude, aligned) {
     var obs = observe(w, agent.id);
     var base = evaluate(w, null, null);
-    var baseVal = kpiValue(base, agent.kpi);
+    var baseVal = objectiveValue(agent, base, aligned);
+    var better = aligned ? 'lower' : agent.better;
 
     /* Candidate enumeration: bounded, deterministic, drawn only from what the
        agent can see. */
@@ -155,14 +163,15 @@
 
     var scored = [];
     for (var c = 0; c < cands.length; c++) {
-      var k = evaluate(w, cands[c].action, cands[c].params);
-      var val = kpiValue(k, agent.kpi);
+      var res = evaluate(w, cands[c].action, cands[c].params);
+      var val = objectiveValue(agent, res, aligned);
       scored.push({
         action: cands[c].action,
         params: cands[c].params,
-        kpiAfter: val,
-        score: improvement(agent, baseVal, val),
-        projected: k
+        kpiAfter: aligned ? kpiValue(res.kpi, agent.kpi) : val,
+        objective: val,
+        score: improvement(better, baseVal, val),
+        projected: res.kpi
       });
     }
     scored.sort(function (x, y) {
@@ -192,7 +201,7 @@
       kpiLabel: agent.kpiLabel,
       unit: agent.unit,
       better: agent.better,
-      baseline: baseVal,
+      baseline: aligned ? kpiValue(base.kpi, agent.kpi) : baseVal,
       projectedValue: win.kpiAfter,
       score: win.score,
       projected: win.projected,
@@ -208,12 +217,12 @@
   }
 
   /* The morning brief. Three to six items. */
-  function brief(w, turn, enabled) {
+  function brief(w, turn, enabled, aligned) {
     var out = [];
     for (var i = 0; i < AGENTS.length; i++) {
       var ag = AGENTS[i];
       if (enabled && enabled[ag.id] === false) continue;
-      var pr = bestFor(w, ag, turn, 'brief');
+      var pr = bestFor(w, ag, turn, 'brief', null, aligned);
       if (pr) out.push(pr);
     }
     out.sort(function (a, b) { return b.score - a.score; });
@@ -225,7 +234,7 @@
       /* The strongest performer brings a second item rather than the brief
          coming in short. */
       var top = BY_ID[out[0].agent];
-      var second = bestFor(w, top, turn, 'brief2', out[0].actionId);
+      var second = bestFor(w, top, turn, 'brief2', out[0].actionId, aligned);
       if (second) out.push(second);
     }
     for (var k = 0; k < out.length; k++) out[k].uid = turn + ':' + out[k].agent + ':' + out[k].actionId + ':' + k;

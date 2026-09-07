@@ -83,7 +83,9 @@
       return Math.sqrt(v / arr.length) / m;
     }
     var ca = cv(A), cb = cv(B);
-    if (cb < 1e-4) return ca > 1e-4 ? Math.min(20, ca * 40) : 1;
+    /* With no variance at the customer the ratio has no denominator. Report
+       the cap and let the caller show the two coefficients instead. */
+    if (cb < 1e-4) return ca > 1e-4 ? 20 : 1;
     return Math.max(0.2, Math.min(20, ca / cb));
   }
 
@@ -97,21 +99,14 @@
     return w.acc.custDemand > 0 ? w.acc.custShip / w.acc.custDemand : 1;
   }
 
-  function recoveryTime(w, flow) {
-    var i;
-    var t0 = w.idx.tierN[0], biggest = t0[0];
-    for (i = 1; i < t0.length; i++) if (flow[t0[i]] > flow[biggest]) biggest = t0[i];
-
-    /* Two clones from the same state on the same random stream: one loses its
-       largest source for ten weeks, the other does not. Recovery time is
-       how long after that source returns before service is normal again. */
-    var OUT = 10, WIN = 78, HOLD = 8, TOL = 0.012;
-    var fix = (CSC.hash32('probe:' + w.net.seed) >>> 0);
+  function probeOnce(w, biggest, offset, fix) {
+    var OUT = 10, WIN = 70, HOLD = 8, TOL = 0.012, i;
     var ctl = sim.clone(w); ctl.rs = fix;
     var hit = sim.clone(w); hit.rs = fix;
+    for (i = 0; i < offset; i++) { weeklyFill(ctl); weeklyFill(hit); }
     var savedCap = hit.capacity[biggest];
     var ra = [1, 1, 1, 1], rb = [1, 1, 1, 1];
-    var clean = 0, recovered = -1;
+    var clean = 0;
     for (i = 0; i < WIN; i++) {
       hit.capacity[biggest] = i < OUT ? 0 : savedCap;
       ra[i % 4] = weeklyFill(ctl);
@@ -119,26 +114,48 @@
       if (i < OUT + 2) continue;
       var ma = (ra[0] + ra[1] + ra[2] + ra[3]) / 4;
       var mb = (rb[0] + rb[1] + rb[2] + rb[3]) / 4;
-      /* Recovered means recovered and stayed recovered. */
       if (mb >= ma - TOL) {
         clean++;
-        if (clean >= HOLD && recovered < 0) { recovered = i - HOLD + 1; break; }
+        if (clean >= HOLD) return Math.max(0, (i - HOLD + 1) - OUT);
       } else clean = 0;
     }
-    if (recovered < 0) return WIN - OUT;
-    return Math.max(0, recovered - OUT);
+    return WIN - OUT;
+  }
+
+  /* Two clones from the same state on the same random stream: one loses its
+     largest source for ten weeks, the other does not. Recovery time is how
+     long after that source returns before service is normal again — averaged
+     over three starting phases, because whether a single outage happens to be
+     absorbed depends on where in the order cycle it lands. */
+  function recoveryTime(w, flow) {
+    var i;
+    var t0 = w.idx.tierN[0], biggest = t0[0];
+    for (i = 1; i < t0.length; i++) if (flow[t0[i]] > flow[biggest]) biggest = t0[i];
+    var fix = (CSC.hash32('probe:' + w.net.seed) >>> 0);
+    var a = probeOnce(w, biggest, 0, fix);
+    var b = probeOnce(w, biggest, 5, fix);
+    var c = probeOnce(w, biggest, 11, fix);
+    return (a + b + c) / 3;
   }
 
   /* ---- per-node exposure, for the Risk view ------------------------------ */
   function nodeRisk(w, flow) {
     var risk = new Float64Array(w.N);
-    var maxFlow = 1;
-    for (var f = 0; f < w.N; f++) if (flow[f] > maxFlow) maxFlow = flow[f];
+    var maxFlow = 1, endDem = 0, f;
+    for (f = 0; f < w.N; f++) if (flow[f] > maxFlow) maxFlow = flow[f];
+    var t4 = w.idx.tierN[4];
+    for (f = 0; f < t4.length; f++) endDem += w.baseDemand[t4[f]];
+    if (endDem <= 0) endDem = 1;
+
     for (var i = 0; i < w.N; i++) {
       var share = flow[i] / maxFlow;
-      var unrel = (0.995 - w.reliability[i]) / 0.115;      // 0 robust .. 1 fragile
-      var cover = w.buffer[i] / 6.0;                        // 1 = opening buffer
+      var unrel = (0.995 - w.reliability[i]) / 0.115;         // 0 robust .. 1 fragile
+      var b0 = w.buffer0[i] > 0 ? w.buffer0[i] : 1;
+      var cover = w.buffer[i] / b0;                            // 1 = as handed over
       var head = w.capacity[i] > 0 ? Math.max(0, 1 - flow[i] / w.capacity[i]) : 0;
+      /* How much of what the customer buys passes through this one site. A
+         node carrying most of the network is a risk however well it runs. */
+      var spof = Math.min(1, (flow[i] / endDem) / 0.50);
       var sole = 0;
       if (w.tier[i] > 0) {
         var ins = w.idx.inL[i], act = 0, top = 0, tot = 0, x;
@@ -149,11 +166,16 @@
         }
         sole = tot > 0 ? Math.min(1, top / tot) : 1;
         if (act <= 1) sole = 1;
+        sole = Math.max(0, (sole - 0.4) / 0.6);
       }
-      var r = 0.30 * unrel * (0.4 + 0.6 * share)
-            + 0.26 * (1 - Math.min(1, cover))
-            + 0.24 * sole
-            + 0.20 * (1 - Math.min(1, head / 0.4));
+      var r = 0.24 * unrel * (0.35 + 0.65 * share)
+            + 0.20 * (1 - Math.min(1, cover))
+            + 0.19 * sole
+            + 0.13 * (1 - Math.min(1, head / 0.4))
+            + 0.24 * spof;
+      /* A site the whole network runs through is the network's risk, whatever
+         else is true about it. */
+      r = Math.max(r, spof * 0.94);
       risk[i] = Math.max(0, Math.min(1, r));
     }
     return risk;

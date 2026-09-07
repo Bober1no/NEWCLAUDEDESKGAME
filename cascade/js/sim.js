@@ -30,6 +30,7 @@
       safety: new Float64Array(N), review: new Int32Array(N),
       phase: new Int32Array(N), buffer: new Float64Array(N),
       smooth: new Float64Array(N), plan: new Float64Array(N),
+      buffer0: new Float64Array(N),
       batch: new Float64Array(N), alpha: new Float64Array(N),
       disrupt: new Int32Array(N), incoming: new Float64Array(N),
       newDem: new Float64Array(N), demAcc: new Float64Array(N),
@@ -72,6 +73,7 @@
       w.buffer[i] = n.tier === 4 ? 2.7 : 6.0;
       w.smooth[i] = 1.0;
       w.plan[i] = 1.0;
+      w.buffer0[i] = w.buffer[i];
       w.batch[i] = Math.max(8, Math.round((n.tier === 4 ? n.baseDemand : n.pull) * 0.16));
       w.alpha[i] = 0.12;
       w.baseDemand[i] = n.baseDemand || 0;
@@ -155,7 +157,7 @@
 
   var NODE_ARRAYS = ['tier', 'unitCost', 'capacity', 'capBase', 'reliability', 'inv', 'backlog',
     'onOrder', 'fcast', 'sigma', 'safety', 'review', 'batch', 'alpha', 'disrupt',
-    'incoming', 'newDem', 'demAcc', 'baseDemand', 'thru', 'stress', 'phase', 'buffer', 'conv', 'smooth', 'plan'];
+    'incoming', 'newDem', 'demAcc', 'baseDemand', 'thru', 'stress', 'phase', 'buffer', 'conv', 'smooth', 'plan', 'buffer0'];
   var LANE_ARRAYS = ['lFrom', 'lTo', 'lShare', 'lLT', 'lCost', 'lOwed', 'lMode', 'lFlow'];
   var SCALARS = ['kpiRaw', 'net', 'N', 'M', 'MAXLT', 'week', 'turn', 'rs', 'payTerms', 'dso', 'commitMult',
     'promo', 'promoDebt', 'capBias', 'shockNode', 'shockWeek', 'demandNoise', 'demandFlat', 'idx', 'init'];

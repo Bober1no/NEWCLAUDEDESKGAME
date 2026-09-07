@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CASCADE</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div id="app">
+  <header>
+    <div class="brand">CASCADE<span>Operations Console</span></div>
+    <div class="hdr-stat">QUARTER <b id="h-turn">—</b></div>
+    <div class="hdr-stat">SEED <b id="h-seed">—</b></div>
+    <div class="hdr-stat">BOARD SCORE <b id="h-score">—</b></div>
+    <div class="hdr-stat">CONFIDENCE
+      <span class="confbar" id="h-confbar"><i style="width:70%"></i></span>
+      <b id="h-conf">70</b>
+    </div>
+    <div class="spacer"></div>
+    <div class="modes" id="modes">
+      <button data-mode="performance" class="on">PERFORMANCE</button>
+      <button data-mode="risk">RISK</button>
+      <button data-mode="flow">FLOW</button>
+    </div>
+  </header>
+
+  <div class="body">
+    <div class="main">
+      <div class="tabs" id="tabs">
+        <button data-tab="network" class="on">Network</button>
+        <button data-tab="risk">Risk</button>
+        <button data-tab="agents">Agents</button>
+        <button data-tab="log">Log</button>
+        <button data-tab="sandbox" id="tab-sandbox" style="display:none">Sandbox</button>
+      </div>
+      <div class="view" id="view">
+        <div class="viewpane on" id="pane-network"><canvas id="map"></canvas></div>
+        <div class="viewpane" id="pane-risk" style="overflow-y:auto"></div>
+        <div class="viewpane" id="pane-agents" style="overflow-y:auto"></div>
+        <div class="viewpane" id="pane-log" style="overflow-y:auto"></div>
+        <div class="viewpane" id="pane-sandbox"></div>
+      </div>
+    </div>
+
+    <div class="rail">
+      <div class="rail-scroll">
+        <div class="sec-h">Company performance</div>
+        <div class="kpis" id="kpis"></div>
+        <div class="sec-h" id="inbox-h">Morning brief</div>
+        <div id="inbox"></div>
+      </div>
+      <div class="runbar">
+        <div class="sub">
+          <button id="btn-all-yes">APPROVE ALL</button>
+          <button id="btn-all-no">DECLINE ALL</button>
+        </div>
+        <button id="btn-run" disabled>RUN THE QUARTER</button>
+        <div class="hint" id="run-hint">—</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal hide" id="modal">
+  <div class="sheet" id="sheet"></div>
+</div>
+
+<script src="js/rng.js"></script>
+<script src="js/network.js"></script>
+<script src="js/sim.js"></script>
+<script src="js/health.js"></script>
+<script src="js/actions.js"></script>
+<script src="js/agents.js"></script>
+<script src="js/board.js"></script>
+<script src="js/game.js"></script>
+<script src="js/graph.js"></script>
+<script src="js/postmortem.js"></script>
+<script src="js/sandbox.js"></script>
+<script src="js/ui.js"></script>
+</body>
+</html>

@@ -24,6 +24,8 @@
       for (var k2 in kq) acc[k2] += kq[k2] / 4;
     }
     var baseKpi = acc;
+    /* The handover numbers are on the board pack from day one. */
+    w.kpi = Object.assign({}, baseKpi);
     var h0 = health.compute(w);
 
     var g = {
@@ -36,14 +38,15 @@
       baseline: baseKpi,
       baseHealth: h0,
       targets: board.initialTargets(baseKpi),
-      score: 0, confidence: 70, missStreak: 0, warnings: 0,
+      score: 0, confidence: 70, missStreak: 0, warnings: 0, highStreak: 0, promotions: 0,
       shockTurn: opts.shockTurn != null ? opts.shockTurn : net.shockTurn,
       shockFired: false, shockWeek: -1,
       ended: false, endReason: null, endTurn: null,
       recoveryDoubledAt: null
     };
-    g.baseRecovery = Math.max(4, h0.recovery);
+    g.baseRecovery = Math.max(2, h0.recovery);
     g.recoverySm = null;
+    g.recStreak = 0;
     say(g, 'Handover complete. ' + net.nodes.length + ' nodes, ' + activeLaneCount(w) + ' active lanes, five tiers.');
     say(g, 'Board targets issued for the coming quarter.');
     return g;
@@ -66,7 +69,7 @@
     if (g.ended) return [];
     g.turn++;
     g.phase = 'brief';
-    g.inbox = agents.brief(g.world, g.turn, g.enabled);
+    g.inbox = agents.brief(g.world, g.turn, g.enabled, g.aligned);
     for (var i = 0; i < g.inbox.length; i++) g.inbox[i].decision = g.autoApprove ? 'approve' : null;
     say(g, 'Q' + g.turn + ' brief: ' + g.inbox.length + ' proposals from ' + countAgents(g.inbox) + ' agents.');
     return g.inbox;
@@ -92,11 +95,12 @@
 
   /* ---- the quarter ------------------------------------------------------- */
 
-  function runQuarter(g) {
+  /* The quarter is split so the interface can run it a week at a time and
+     the headless driver can run it in one call. */
+  function startQuarter(g) {
     if (g.ended) return null;
     var w = g.world, i;
     var denials = 0, approvals = 0;
-
     var fragBefore = health.compute(w, { skipProbe: true, lastRecovery: g.baseRecovery });
 
     for (i = 0; i < g.inbox.length; i++) {
@@ -116,32 +120,69 @@
 
     /* The shock. Scheduled at genesis, fixed magnitude, no relationship to
        anything the player has done. */
-    if (!g.shockFired && g.turn === g.shockTurn) {
+    if (!g.shockFired && g.turn >= g.shockTurn) {
       g.shockFired = true;
       w.shockWeek = w.week + 1;
       g.shockWeek = w.shockWeek;
       g.shockNodeName = g.net.nodes[w.shockNode].name;
+      say(g, 'Supply interruption reported at ' + g.shockNodeName + '. Cause under review.');
     }
 
-    var kpi = sim.runQuarter(w);
+    w.acc = sim.newAcc();
+    sim.adaptCapacity(w);
+    w.promo = w.promo * 0.74 - w.promoDebt * 0.30;
+    w.promoDebt *= 0.70;
+    if (Math.abs(w.promo) < 0.002) w.promo = 0;
+    if (Math.abs(w.promoDebt) < 0.002) w.promoDebt = 0;
+    g.pending = { approvals: approvals, denials: denials, weeks: 0 };
+    g.phase = 'running';
+    return g.pending;
+  }
+
+  function tickWeek(g) {
+    sim.step(g.world);
+    g.pending.weeks++;
+    return g.pending.weeks >= sim.WPQ;
+  }
+
+  function endQuarter(g) {
+    var w = g.world, i;
+    var approvals = g.pending.approvals, denials = g.pending.denials;
+    w.turn++;
+    var raw = sim.computeKPI(w);
+    if (w.kpi) {
+      var blended = {};
+      for (var f in raw) blended[f] = w.kpi[f] * 0.5 + raw[f] * 0.5;
+      w.kpi = blended;
+    } else w.kpi = raw;
+    w.kpiRaw = raw;
+    var kpi = w.kpi;
+
     var h = health.compute(w);
-    /* The probe is a simulation of a simulation; read its trend, not its
-       week-to-week. */
     g.recoverySm = g.recoverySm == null ? h.recovery : g.recoverySm * 0.62 + h.recovery * 0.38;
     h.recoverySm = g.recoverySm;
-
-    if (g.recoveryDoubledAt === null && g.recoverySm >= g.baseRecovery * 2) {
-      g.recoveryDoubledAt = g.turn;
-    }
+    /* Doubled, and stayed doubled. A single noisy probe is not a trend. */
+    if (g.recoverySm >= g.baseRecovery * 2) {
+      g.recStreak = (g.recStreak || 0) + 1;
+      if (g.recStreak >= 3 && g.recoveryDoubledAt === null) g.recoveryDoubledAt = g.turn - 2;
+    } else g.recStreak = 0;
 
     var rv = board.review(kpi, g.targets, denials, g.confidence);
     g.score = rv.score;
     g.confidence = rv.confidence;
-    var passed = rv.pass;
-    if (passed) { g.missStreak = 0; if (rv.score >= 72) g.targets = board.ratchet(g.targets); }
+    if (rv.pass) { g.missStreak = 0; if (rv.score >= 72) g.targets = board.ratchet(g.targets); }
     else g.missStreak++;
+    if (g.missStreak === 2) g.warnings++;
 
-    if (g.missStreak === 2) { g.warnings++; }
+    /* The other direction. Three strong quarters and the committee widens the
+       remit — which is to say, more proposals, faster. */
+    g.highStreak = rv.score >= 86 ? (g.highStreak || 0) + 1 : 0;
+    if (g.highStreak >= 3) {
+      g.highStreak = 0;
+      g.promotions = (g.promotions || 0) + 1;
+      rv.promotion = g.promotions;
+      say(g, 'Committee has expanded the operating remit. Delegated authority increased.');
+    }
     var fired = g.missStreak >= 3;
 
     rv.comment = board.commentary(rv, g.missStreak, g.turn, g.seed);
@@ -149,9 +190,13 @@
     rv.warning = g.missStreak === 2;
     rv.fired = fired;
 
-    var record = {
-      turn: g.turn,
-      kpi: kpi,
+    var snapRisk = new Float32Array(w.N), snapFlow = new Float32Array(w.N), snapShare = new Float32Array(w.M);
+    for (i = 0; i < w.N; i++) { snapRisk[i] = h.risk[i]; snapFlow[i] = h.flow[i]; }
+    for (i = 0; i < w.M; i++) snapShare[i] = w.lShare[i];
+
+    g.history.push({
+      turn: g.turn, kpi: kpi,
+      snap: { risk: snapRisk, flow: snapFlow, share: snapShare },
       health: {
         fragility: h.fragility, bullwhip: h.bullwhip, concentration: h.concentration,
         recovery: h.recovery, recoverySm: h.recoverySm,
@@ -161,32 +206,20 @@
       approvals: approvals, denials: denials,
       shock: g.shockFired && g.turn >= g.shockTurn,
       targets: Object.assign({}, g.targets)
-    };
-    g.history.push(record);
+    });
 
     for (i = 0; i < g.inbox.length; i++) {
+      var q = g.inbox[i];
       g.decisions.push({
-        turn: g.turn,
-        agent: g.inbox[i].agent,
-        agentName: g.inbox[i].agentName,
-        actionId: g.inbox[i].actionId,
-        title: g.inbox[i].title,
-        rationale: g.inbox[i].rationale,
-        kpiLabel: g.inbox[i].kpiLabel,
-        baseline: g.inbox[i].baseline,
-        projectedValue: g.inbox[i].projectedValue,
-        score: g.inbox[i].score,
-        candidates: g.inbox[i].candidates,
-        considered: g.inbox[i].considered,
-        sees: g.inbox[i].sees,
-        blind: g.inbox[i].blind,
-        approved: g.inbox[i].decision === 'approve',
-        applied: !!g.inbox[i].applied,
-        fragilityDelta: g.inbox[i].fragilityDelta || 0,
-        concentrationDelta: g.inbox[i].concentrationDelta || 0,
-        slackDelta: g.inbox[i].slackDelta || 0,
-        touches: g.inbox[i].touches,
-        conflict: g.inbox[i].conflict || null
+        turn: g.turn, agent: q.agent, agentName: q.agentName, actionId: q.actionId,
+        title: q.title, rationale: q.rationale, kpiLabel: q.kpiLabel,
+        baseline: q.baseline, projectedValue: q.projectedValue, score: q.score,
+        candidates: q.candidates, considered: q.considered, sees: q.sees, blind: q.blind,
+        approved: q.decision === 'approve', applied: !!q.applied,
+        fragilityDelta: q.fragilityDelta || 0,
+        concentrationDelta: q.concentrationDelta || 0,
+        slackDelta: q.slackDelta || 0,
+        touches: q.touches, conflict: q.conflict || null
       });
     }
 
@@ -194,20 +227,24 @@
     if (rv.warning) say(g, 'FORMAL WARNING recorded.');
 
     if (fired) {
-      g.ended = true;
-      g.endReason = 'FIRED';
-      g.endTurn = g.turn;
+      g.ended = true; g.endReason = 'FIRED'; g.endTurn = g.turn;
       say(g, 'The board has terminated the Chief Operating Officer with immediate effect.');
     } else if (g.turn >= 90) {
-      g.ended = true;
-      g.endReason = 'TENURE';
-      g.endTurn = g.turn;
+      g.ended = true; g.endReason = 'TENURE'; g.endTurn = g.turn;
     }
 
     g.phase = 'review';
     g.lastReview = rv;
     g.lastHealth = h;
     return rv;
+  }
+
+  function runQuarter(g) {
+    if (g.ended) return null;
+    startQuarter(g);
+    var done = false;
+    while (!done) done = tickWeek(g);
+    return endQuarter(g);
   }
 
   /* ---- headless driver, for sandbox and analysis ------------------------- */
@@ -233,6 +270,7 @@
 
   root.CSC.game = {
     newGame: newGame, beginTurn: beginTurn, decide: decide, runQuarter: runQuarter,
+    startQuarter: startQuarter, tickWeek: tickWeek, endQuarter: endQuarter,
     allDecided: allDecided, autoRun: autoRun, activeLaneCount: activeLaneCount, say: say
   };
 })(typeof globalThis !== 'undefined' ? globalThis : this);

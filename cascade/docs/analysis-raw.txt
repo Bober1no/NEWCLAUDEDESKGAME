@@ -1,0 +1,52 @@
+
+== seed CASCADE-1 (45 quarters, every proposal approved)
+   no agents      fragility 8.9  otd 100.0%
+   ORIN/Procurement     +36.8  otd 70.4%  conc 69.5%
+   MAYE/Logistics       +0.0  otd 100.0%  conc 5.7%
+   SELV/Inventory       +2.6  otd 100.0%  conc 5.7%
+   BRAE/Sales           +0.7  otd 100.0%  conc 5.8%
+   KADE/Finance         +2.4  otd 100.0%  conc 5.7%
+   sum of solos   +42.5
+   all five       +46.7   (1.10× the sum)
+   recovery time doubled at Q4 (baseline 2 wks → 28.9 wks)
+
+== seed CASCADE-2 (45 quarters, every proposal approved)
+   no agents      fragility 9.3  otd 100.0%
+   ORIN/Procurement     +9.1  otd 53.9%  conc 21.6%
+   MAYE/Logistics       +0.0  otd 100.0%  conc 10.8%
+   SELV/Inventory       +2.1  otd 100.0%  conc 10.8%
+   BRAE/Sales           +2.4  otd 100.0%  conc 11.6%
+   KADE/Finance         +1.2  otd 100.0%  conc 10.8%
+   sum of solos   +14.7
+   all five       +53.5   (3.63× the sum)
+   recovery time doubled at Q6 (baseline 2 wks → 36.5 wks)
+
+== seed CASCADE-3 (45 quarters, every proposal approved)
+   no agents      fragility 11.3  otd 100.0%
+   ORIN/Procurement     +22.9  otd 67.3%  conc 32.8%
+   MAYE/Logistics       +0.0  otd 100.0%  conc 7.9%
+   SELV/Inventory       +0.3  otd 100.0%  conc 7.9%
+   BRAE/Sales           +1.5  otd 100.0%  conc 8.1%
+   KADE/Finance         +2.0  otd 100.0%  conc 7.9%
+   sum of solos   +26.7
+   all five       +37.2   (1.39× the sum)
+   recovery time doubled at Q3 (baseline 2 wks → 28.6 wks)
+
+== pairwise interaction, mean over 3 seeds
+   pair                                    joint   additive   excess    otd     conc   recov
+   ORIN + KADE         Procurement/Finance    +43.7     +24.8+    18.9    67.7%    90.3pp   19.0
+   ORIN + MAYE         Procurement/Logistics  +32.6     +22.9+     9.7    69.4%    61.6pp   25.2
+   ORIN + BRAE         Procurement/Sales      +28.0     +24.4+     3.6    66.9%    34.6pp   38.7
+   ORIN + SELV         Procurement/Inventory  +27.4     +24.6+     2.8    68.6%    41.3pp   24.4
+   SELV + KADE         Inventory/Finance       +3.7      +3.5+     0.2   100.0%     0.0pp    2.0
+   MAYE + SELV         Logistics/Inventory     +1.7      +1.7+     0.0   100.0%     0.0pp    2.0
+   MAYE + BRAE         Logistics/Sales         +1.5      +1.5+     0.0   100.0%     0.4pp    2.0
+   MAYE + KADE         Logistics/Finance       +1.9      +1.9+     0.0   100.0%     0.0pp    2.0
+   BRAE + KADE         Sales/Finance           +2.9      +3.4    -0.5   100.0%     0.1pp    2.0
+   SELV + BRAE         Inventory/Sales         +2.2      +3.2    -1.0   100.0%     0.2pp    2.0
+
+== recovery-time doubling, full board
+   CASCADE-1  Q4  (baseline 2 wks)
+   CASCADE-2  Q6  (baseline 2 wks)
+   CASCADE-3  Q3  (baseline 2 wks)
+   mean Q4.3
