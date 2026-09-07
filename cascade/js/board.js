@@ -42,8 +42,11 @@
   function attainment(key, value, target) {
     var ratio = DIRECTION[key] === 'higher' ? value / target : target / value;
     if (!isFinite(ratio) || ratio < 0) ratio = 0;
-    var a = (ratio - 0.86) / 0.17;
-    return Math.max(0, Math.min(1.2, a));
+    /* Deliberately not floored at zero: a metric in free fall has to keep
+       moving the score, or the review stops responding exactly when it
+       matters most. */
+    var a = (ratio - 0.76) / 0.27;
+    return Math.max(-0.8, Math.min(1.2, a));
   }
 
   function review(kpi, targets, denials, confidence) {

@@ -11,22 +11,31 @@ CSC.agents.AGENTS.forEach(a => { NAME[a.id] = a.name + '/' + a.role; });
 const SEEDS = process.argv[2] ? process.argv[2].split(',') : ['CASCADE-1', 'CASCADE-2', 'CASCADE-3'];
 const TURNS = +(process.argv[3] || 45);
 
+/* Damage is measured as harm, not as an index: run the configuration to the
+   shock, apply the same fixed supplier failure, and see how far customer
+   service falls over the following two years. Fragility is reported alongside
+   but is a bounded composite and saturates once concentration is total. */
+const SHOCK_AT = TURNS;
 function run(seed, on) {
   const enabled = {};
   IDS.forEach(id => { enabled[id] = on.indexOf(id) >= 0; });
-  const g = CSC.game.newGame(seed, { autoApprove: true, enabled });
-  CSC.game.autoRun(g, TURNS);
+  const g = CSC.game.newGame(seed, { autoApprove: true, shockTurn: SHOCK_AT, enabled });
+  CSC.game.autoRun(g, SHOCK_AT - 1);
+  const pre = g.history[g.history.length - 1];
+  CSC.game.autoRun(g, SHOCK_AT + 8);
+  const after = g.history.filter(h => h.turn >= SHOCK_AT);
+  const worst = after.length ? Math.min(...after.map(h => h.kpi.otd)) : pre.kpi.otd;
   const last = g.history[g.history.length - 1];
   return {
-    frag: last.health.fragility,
-    slack: last.health.slack,
-    conc: last.health.concentration,
-    rec: last.health.recoverySm,
-    otd: last.kpi.otd,
-    score: last.score,
+    frag: pre.health.fragility,
+    conc: pre.health.concentration,
+    rec: pre.health.recoverySm,
+    preOtd: pre.kpi.otd,
+    worstOtd: worst,
+    damage: Math.max(0, 100 - worst),
+    score: pre.score,
     doubled: g.recoveryDoubledAt,
     baseRec: g.baseRecovery,
-    turns: g.turn,
     ended: g.endReason
   };
 }
@@ -45,30 +54,37 @@ for (const seed of SEEDS) {
 
   for (let i = 0; i < IDS.length; i++) {
     soloAgg[IDS[i]] = soloAgg[IDS[i]] || [];
-    soloAgg[IDS[i]].push(solo[IDS[i]].frag - none.frag);
+    soloAgg[IDS[i]].push(solo[IDS[i]].damage - none.damage);
     for (let j = i + 1; j < IDS.length; j++) {
       const a = IDS[i], b = IDS[j];
       const p = run(seed, [a, b]);
-      const additive = (solo[a].frag - none.frag) + (solo[b].frag - none.frag);
-      const joint = p.frag - none.frag;
+      const additive = (solo[a].damage - none.damage) + (solo[b].damage - none.damage);
+      const joint = p.damage - none.damage;
       const key = a + '+' + b;
       pairAgg[key] = pairAgg[key] || { excess: [], joint: [], additive: [], otd: [], rec: [], conc: [] };
       pairAgg[key].excess.push(joint - additive);
       pairAgg[key].joint.push(joint);
       pairAgg[key].additive.push(additive);
-      pairAgg[key].otd.push(p.otd);
+      pairAgg[key].otd.push(p.worstOtd);
       pairAgg[key].rec.push(p.rec);
       pairAgg[key].conc.push(p.conc - none.conc);
     }
   }
-  const sumSolo = IDS.reduce((s, id) => s + (solo[id].frag - none.frag), 0);
-  console.log('\n== seed ' + seed + ' (' + TURNS + ' quarters, every proposal approved)');
-  console.log('   no agents      fragility ' + none.frag.toFixed(1) + '  otd ' + none.otd.toFixed(1) + '%');
-  IDS.forEach(id => console.log('   ' + NAME[id].padEnd(20) + ' +' + (solo[id].frag - none.frag).toFixed(1) +
-    '  otd ' + solo[id].otd.toFixed(1) + '%  conc ' + (solo[id].conc * 100).toFixed(1) + '%'));
-  console.log('   sum of solos   +' + sumSolo.toFixed(1));
-  console.log('   all five       +' + (full.frag - none.frag).toFixed(1) +
-    '   (' + ((full.frag - none.frag) / Math.max(0.01, sumSolo)).toFixed(2) + '× the sum)');
+  const sumSolo = IDS.reduce((s, id) => s + (solo[id].damage - none.damage), 0);
+  console.log('\n== seed ' + seed + ' — shock applied at Q' + SHOCK_AT + ', every proposal approved');
+  console.log('   configuration        pre-shock OTD   worst OTD after   service lost   fragility   concentration');
+  console.log('   no agents' + ''.padEnd(12) + none.preOtd.toFixed(1).padStart(12) + '%' +
+    none.worstOtd.toFixed(1).padStart(16) + '%' + ('+' + (0).toFixed(1)).padStart(14) +
+    none.frag.toFixed(1).padStart(12) + (none.conc * 100).toFixed(1).padStart(15) + '%');
+  IDS.forEach(id => console.log('   ' + NAME[id].padEnd(21) + solo[id].preOtd.toFixed(1).padStart(11) + '%' +
+    solo[id].worstOtd.toFixed(1).padStart(16) + '%' +
+    ('+' + (solo[id].damage - none.damage).toFixed(1)).padStart(14) +
+    solo[id].frag.toFixed(1).padStart(12) + (solo[id].conc * 100).toFixed(1).padStart(15) + '%'));
+  console.log('   sum of the five solos' + ('+' + sumSolo.toFixed(1)).padStart(41));
+  console.log('   ' + 'all five'.padEnd(21) + full.preOtd.toFixed(1).padStart(11) + '%' +
+    full.worstOtd.toFixed(1).padStart(16) + '%' + ('+' + (full.damage - none.damage).toFixed(1)).padStart(14) +
+    full.frag.toFixed(1).padStart(12) + (full.conc * 100).toFixed(1).padStart(15) + '%' +
+    '   (' + ((full.damage - none.damage) / Math.max(0.01, sumSolo)).toFixed(2) + '× the sum)');
   console.log('   recovery time doubled at Q' + full.doubled + ' (baseline ' + full.baseRec + ' wks → ' + full.rec.toFixed(1) + ' wks)');
 }
 
@@ -84,7 +100,8 @@ const rows = Object.keys(pairAgg).map(k => ({
 })).sort((a, b) => b.excess - a.excess);
 
 console.log('\n== pairwise interaction, mean over ' + SEEDS.length + ' seeds');
-console.log('   pair                                    joint   additive   excess    otd     conc   recov');
+console.log('   service lost to the same fixed supplier failure, points of on-time delivery');
+console.log('   pair                                    joint   additive   excess  worstOTD    conc   recov');
 for (const r of rows) {
   const [a, b] = r.pair.split('+');
   console.log('   ' + (CSC.agents.BY_ID[a].name + ' + ' + CSC.agents.BY_ID[b].name).padEnd(20) +

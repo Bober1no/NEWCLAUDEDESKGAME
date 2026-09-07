@@ -174,22 +174,15 @@
       if (nodes[tierIndex[0][az2]].unitCost < nodes[anchor].unitCost) anchor = tierIndex[0][az2];
     }
 
-    /* Tier 0 is the outside world. Capacity is a fixed pool shared out steeply
-       in favour of the low-cost producers. Nobody in this market can double
-       output on request, which is the whole reason concentration matters. */
-    var wsum = 0, wt = [], others = [];
-    for (var wz = 0; wz < tierIndex[0].length; wz++) {
-      var nz0 = tierIndex[0][wz];
-      if (nz0 === anchor) continue;
-      var ww = Math.exp(-6 * nodes[nz0].costRoll) + 0.04;
-      others.push(nz0); wt.push(ww); wsum += ww;
-    }
-    nodes[anchor].capacity = totalDem * 1.75;
-    nodes[anchor].pull = pull[anchor];
-    var pool = totalDem * 1.30;
-    for (var pz = 0; pz < others.length; pz++) {
-      nodes[others[pz]].capacity = Math.max(pull[others[pz]] * 1.7, (wt[pz] / wsum) * pool);
-      nodes[others[pz]].pull = pull[others[pz]];
+    /* Tier 0 is the outside world. Capacity follows the cost curve steeply and
+       monotonically: in this market the cheap producers are the large ones, so
+       whichever cheap source a buyer consolidates onto has room for the volume.
+       What it does not have is a substitute, once the alternates are dropped. */
+    for (var pz = 0; pz < tierIndex[0].length; pz++) {
+      var nz = tierIndex[0][pz];
+      var scale = 0.12 + 1.70 * Math.pow(1 - nodes[nz].costRoll, 2);
+      nodes[nz].capacity = Math.max(pull[nz] * 2.0, totalDem * scale);
+      nodes[nz].pull = pull[nz];
     }
 
     for (var ni = 0; ni < nodes.length; ni++) {

@@ -445,12 +445,36 @@
     return w;
   }
 
+  /* Demand-weighted requirement at every node, rolled up from the plan at the
+     customer through the active source mix. This is a planning number: the
+     company knows what it intends to sell and how it intends to source it. */
+  function structuralFlow(w) {
+    var flow = new Float64Array(w.N);
+    var t4 = w.idx.tierN[4], d, t, k, x;
+    for (d = 0; d < t4.length; d++) flow[t4[d]] = w.baseDemand[t4[d]];
+    for (t = 4; t >= 1; t--) {
+      var lst = w.idx.tierN[t];
+      for (k = 0; k < lst.length; k++) {
+        var i = lst[k], ins = w.idx.inL[i], sh = 0;
+        for (x = 0; x < ins.length; x++) if (w.lShare[ins[x]] > 0.0001) sh += w.lShare[ins[x]];
+        if (sh <= 0) continue;
+        for (x = 0; x < ins.length; x++) {
+          var L = ins[x];
+          if (w.lShare[L] <= 0.0001) continue;
+          flow[w.lFrom[L]] += flow[i] * (w.lShare[L] / sh);
+        }
+      }
+    }
+    return flow;
+  }
+
   /* Suppliers grow into the volume they are given — but only so far, and
      only so fast. The headroom between what a site can be asked for and what
      it can ever build is finite, and it is not on anybody's scorecard. */
   var CAP_CEILING = 1.5;
   var CAP_HARD = 8.0;
   function adaptCapacity(w) {
+    var need = structuralFlow(w);
     for (var i = 0; i < w.N; i++) {
       if (w.capBase[i] <= 0) continue;
       /* The supply market is not elastic. An outside supplier cannot double
@@ -459,10 +483,11 @@
       /* A site that wins volume will build for it, slowly, and only so far.
          Capacity is an asset: a quiet quarter does not remove it. */
       var lo = w.capBase[i];
-      var hi = Math.max(w.capBase[i] * CAP_CEILING, Math.min(w.capBase[i] * CAP_HARD, w.stress[i] * 1.3));
-      var desired = w.stress[i] * 1.22;
+      var want = Math.max(w.stress[i], need[i]);
+      var hi = Math.max(w.capBase[i] * CAP_CEILING, Math.min(w.capBase[i] * CAP_HARD, want * 1.35));
+      var desired = want * 1.28;
       var target = desired < lo ? lo : (desired > hi ? hi : desired);
-      if (target > w.capacity[i]) w.capacity[i] += (target - w.capacity[i]) * 0.22;
+      if (target > w.capacity[i]) w.capacity[i] += (target - w.capacity[i]) * 0.40;
     }
   }
 
@@ -500,7 +525,7 @@
 
   root.CSC.sim = {
     fromNetwork: fromNetwork, clone: clone, step: step, runWeeks: runWeeks,
-    runQuarter: runQuarter, adaptCapacity: adaptCapacity, computeKPI: computeKPI, project: project, warmup: warmup,
+    runQuarter: runQuarter, adaptCapacity: adaptCapacity, structuralFlow: structuralFlow, computeKPI: computeKPI, project: project, warmup: warmup,
     newAcc: newAcc, landedCostPerUnit: landedCostPerUnit, PRICE: PRICE, WPQ: WPQ, snapshotInit: snapshotInit
   };
 })(typeof globalThis !== 'undefined' ? globalThis : this);

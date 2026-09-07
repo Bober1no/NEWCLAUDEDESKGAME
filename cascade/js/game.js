@@ -177,8 +177,9 @@
     /* The other direction. Three strong quarters and the committee widens the
        remit — which is to say, more proposals, faster. */
     g.highStreak = rv.score >= 86 ? (g.highStreak || 0) + 1 : 0;
-    if (g.highStreak >= 3) {
+    if (g.highStreak >= 3 && g.turn - (g.lastPromotion || 0) >= 10 && (g.promotions || 0) < 4) {
       g.highStreak = 0;
+      g.lastPromotion = g.turn;
       g.promotions = (g.promotions || 0) + 1;
       rv.promotion = g.promotions;
       say(g, 'Committee has expanded the operating remit. Delegated authority increased.');

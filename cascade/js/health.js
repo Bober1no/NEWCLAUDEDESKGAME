@@ -9,27 +9,8 @@
 
   /* ---- structural measures ----------------------------------------------- */
 
-  function sourceFlows(w) {
-    /* Effective demand-weighted flow through every node, from the active
-       source mix. Independent of week-to-week noise. */
-    var flow = new Float64Array(w.N);
-    var t4 = w.idx.tierN[4];
-    for (var d = 0; d < t4.length; d++) flow[t4[d]] = w.baseDemand[t4[d]];
-    for (var t = 4; t >= 1; t--) {
-      var lst = w.idx.tierN[t];
-      for (var k = 0; k < lst.length; k++) {
-        var i = lst[k], ins = w.idx.inL[i], sh = 0, x;
-        for (x = 0; x < ins.length; x++) if (w.lShare[ins[x]] > 0.0001) sh += w.lShare[ins[x]];
-        if (sh <= 0) continue;
-        for (x = 0; x < ins.length; x++) {
-          var L = ins[x];
-          if (w.lShare[L] <= 0.0001) continue;
-          flow[w.lFrom[L]] += flow[i] * (w.lShare[L] / sh);
-        }
-      }
-    }
-    return flow;
-  }
+  /* The same structural rollup the capacity planner uses. */
+  function sourceFlows(w) { return sim.structuralFlow(w); }
 
   function concentration(w, flow) {
     var t0 = w.idx.tierN[0], tot = 0, i;
@@ -100,33 +81,32 @@
   }
 
   function probeOnce(w, biggest, offset, fix) {
-    var OUT = 10, WIN = 70, HOLD = 8, TOL = 0.012, i;
+    /* A scaled-down version of the disruption the network is actually exposed
+       to: eighteen weeks with the largest source gone, eighteen at a fifth of
+       normal, then full restoration. The measure is how many weeks of degraded
+       customer service that costs — which is what redundancy and cover buy. */
+    var OUT = 36, WIN = 88, TOL = 0.010, i;
     var ctl = sim.clone(w); ctl.rs = fix;
     var hit = sim.clone(w); hit.rs = fix;
     for (i = 0; i < offset; i++) { weeklyFill(ctl); weeklyFill(hit); }
     var savedCap = hit.capacity[biggest];
-    var ra = [1, 1, 1, 1], rb = [1, 1, 1, 1];
-    var clean = 0;
+    var ra = [1, 1, 1, 1], rb = [1, 1, 1, 1], impaired = 0;
     for (i = 0; i < WIN; i++) {
-      hit.capacity[biggest] = i < OUT ? 0 : savedCap;
+      hit.capacity[biggest] = i < 18 ? 0 : (i < OUT ? savedCap * 0.20 : savedCap);
       ra[i % 4] = weeklyFill(ctl);
       rb[i % 4] = weeklyFill(hit);
-      if (i < OUT + 2) continue;
+      if (i < 3) continue;
       var ma = (ra[0] + ra[1] + ra[2] + ra[3]) / 4;
       var mb = (rb[0] + rb[1] + rb[2] + rb[3]) / 4;
-      if (mb >= ma - TOL) {
-        clean++;
-        if (clean >= HOLD) return Math.max(0, (i - HOLD + 1) - OUT);
-      } else clean = 0;
+      if (mb < ma - TOL) impaired++;
     }
-    return WIN - OUT;
+    return impaired;
   }
 
-  /* Two clones from the same state on the same random stream: one loses its
-     largest source for ten weeks, the other does not. Recovery time is how
-     long after that source returns before service is normal again — averaged
-     over three starting phases, because whether a single outage happens to be
-     absorbed depends on where in the order cycle it lands. */
+  /* Two clones from the same state on the same random stream: one is put
+     through a standard disruption at its largest source, the other is not.
+     The gap between them is the network's answer, with the background noise
+     divided out, averaged over three starting phases. */
   function recoveryTime(w, flow) {
     var i;
     var t0 = w.idx.tierN[0], biggest = t0[0];

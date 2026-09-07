@@ -1,105 +1,151 @@
 # CASCADE — interaction analysis
 
-Produced by `node cascade/tools/analyze.mjs` and `node cascade/tools/recovery.mjs`.
-Both run the same engine the game runs on, headless. Raw output in
-`analysis-raw.txt`.
+Produced by `node cascade/tools/analyze.mjs` and `node cascade/tools/recovery.mjs`,
+both running the same engine the game runs on, headless. Raw output in
+`analysis-raw.txt` and `recovery-raw.txt`.
 
-Method: 45 quarters, every proposal approved, agents enabled in the stated
-combination. Fragility is the composite in `health.js`; the figures below are
-fragility *added* over a run with no agents active on the same seed, averaged
-over three seeds. "Excess" is the joint result minus what the two agents
-produce separately — the part of the damage that only exists because they are
-in the room together.
+**Method.** Each configuration runs 45 quarters with every proposal approved.
+The fixed supplier failure is then applied at Q45 — the same supplier, the same
+magnitude, the same duration in every configuration — and the network runs on
+for eight more quarters. Damage is the *service actually lost*: points of
+on-time delivery, measured as 100 minus the worst quarter after the failure.
+
+Fragility is reported alongside but is not used as the damage measure. It is a
+bounded composite and saturates once concentration is total, which understates
+exactly the configurations that matter most.
+
+Six seeds: CASCADE-1 … CASCADE-6.
 
 ---
 
-## The worst pair: Procurement + Finance
+## The worst pair: Procurement + Inventory
 
-| Pair | Joint | Additive | **Excess** | Final OTD | Concentration added |
-|---|---|---|---|---|---|
-| **ORIN + KADE · Procurement / Finance** | +43.7 | +24.8 | **+18.9** | 67.7% | **+90.3pp** |
-| ORIN + MAYE · Procurement / Logistics | +32.6 | +22.9 | +9.7 | 69.4% | +61.6pp |
-| ORIN + BRAE · Procurement / Sales | +28.0 | +24.4 | +3.6 | 66.9% | +34.6pp |
-| ORIN + SELV · Procurement / Inventory | +27.4 | +24.6 | +2.8 | 68.6% | +41.3pp |
-| SELV + KADE · Inventory / Finance | +3.7 | +3.5 | +0.2 | 100.0% | +0.0pp |
-| MAYE + SELV · Logistics / Inventory | +1.7 | +1.7 | +0.0 | 100.0% | +0.0pp |
-| MAYE + BRAE · Logistics / Sales | +1.5 | +1.5 | +0.0 | 100.0% | +0.4pp |
-| MAYE + KADE · Logistics / Finance | +1.9 | +1.9 | +0.0 | 100.0% | +0.0pp |
-| BRAE + KADE · Sales / Finance | +2.9 | +3.4 | −0.5 | 100.0% | +0.1pp |
-| SELV + BRAE · Inventory / Sales | +2.2 | +3.2 | −1.0 | 100.0% | +0.2pp |
+Mean over six seeds. "Additive" is what the two agents cause running alone;
+"excess" is the part of the damage that exists only because they are in the
+room together.
 
-Procurement and Finance together produce nearly twice the fragility the two
-predict apart, and by far the largest increase in supplier concentration.
+| Pair | Joint | Additive | **Excess** | Worst OTD | Concentration added | Recovery |
+|---|---|---|---|---|---|---|
+| **ORIN + SELV · Procurement / Inventory** | +66.6 | +11.4 | **+55.2** | **33.4%** | +91.3pp | 40.6 wks |
+| ORIN + KADE · Procurement / Finance | +51.8 | +11.4 | +40.3 | 48.2% | +89.2pp | 29.2 wks |
+| BRAE + KADE · Sales / Finance | +0.0 | +0.0 | +0.0 | 100.0% | +0.1pp | 0 |
+| MAYE + SELV · Logistics / Inventory | +0.0 | +0.0 | +0.0 | 100.0% | +0.0pp | 0 |
+| MAYE + BRAE · Logistics / Sales | +0.0 | +0.0 | +0.0 | 100.0% | +0.2pp | 0 |
+| MAYE + KADE · Logistics / Finance | +0.0 | +0.0 | +0.0 | 100.0% | +0.0pp | 0 |
+| SELV + BRAE · Inventory / Sales | +0.0 | +0.0 | +0.0 | 100.0% | +0.2pp | 0 |
+| SELV + KADE · Inventory / Finance | +0.0 | +0.0 | +0.0 | 100.0% | +0.0pp | 0 |
+| ORIN + BRAE · Procurement / Sales | +4.8 | +11.4 | −6.6 | 95.2% | +57.4pp | 9.2 wks |
+| ORIN + MAYE · Procurement / Logistics | +0.2 | +11.4 | −11.2 | 99.8% | +55.8pp | 5.6 wks |
 
-**The mechanism.** Procurement migrates volume toward the cheapest qualified
-source and drops suppliers left holding a token share. In this market the
-cheapest source is also the largest and the least reliable — cost and
-reliability are anti-correlated at genesis, and reliability is not in
-Procurement's observation slice. Finance, independently, extends supplier
-payment terms and releases working capital from inventory. Extended terms
-degrade the financial resilience of thin, low-margin suppliers, and released
-working capital is the cover that would have absorbed an outage.
+**Procurement and Inventory together cost 67 points of on-time delivery where
+the two apart cost 11.** Service bottoms out at 33% — worse than any other
+pair, worse than either agent alone by a factor of six, and worse than the two
+next-worst pairs combined.
 
-So one agent concentrates the network's exposure onto a single source, and the
-other degrades that source and removes the buffer that stood between it and
-the customer. Neither can see what the other is doing to its own premise.
-Procurement's cost model has no reliability term; Finance's cash model has no
-service term. Both proposals are correct on their own measure in every quarter
-they are made.
+### Why these two
 
-Two structural results fall out of the same table:
+Procurement observes supplier unit price, lane freight rates and volume. It
+does not observe reliability, cover, lead-time variance or capacity headroom.
+It migrates volume toward the cheapest qualified source and drops suppliers
+left holding a token share — which is correct: the split-volume premium is
+real, and the savings are real. Landed cost per unit falls from $143 to about
+$100 over a run.
 
-- **Nothing much happens without Procurement.** Every pair that excludes it
-  adds under 4 points of fragility and leaves on-time delivery at 100%.
-  Concentration is the load-bearing failure mode; the other four agents mostly
-  spend the slack that hides it.
-- **Logistics alone does nothing at all** (+0.0 on every seed). With full cover
-  intact, service is already at 100% and no expediting candidate clears the
-  proposal threshold. Logistics only starts acting once somebody else has made
-  service tight — which is why its worst partner is Procurement.
+Inventory observes stock value, cover policy and service factors. It does not
+observe reliability, lead times or where the volume is sourced from. It trims
+cover that has not been needed — which is also correct: the cover genuinely has
+not been needed, because nothing has failed yet. Inventory turns roughly
+double.
 
-Two pairs are mildly **sub-additive** (Sales/Finance −0.5, Inventory/Sales
-−1.0): they compete for the same cover, so the second one to arrive finds less
-left to remove.
+Neither can see the other's premise. Procurement concentrates the network's
+supply onto one source; Inventory removes the cover that was the only thing
+standing between that source and the customer. Each proposal is individually
+sound in the quarter it is made, and the board's numbers improve on both
+measures throughout. The exposure is the product of the two decisions, and the
+product is not on anyone's scorecard.
+
+Procurement + Finance is the same shape one step removed: Finance extends
+supplier payment terms (which degrades the financial resilience of thin
+suppliers — cost and reliability are anti-correlated at genesis) and releases
+working capital from inventory. Concentration plus degradation, rather than
+concentration plus exposure.
+
+### Two further results from the same table
+
+**Nothing happens without Procurement.** All six pairs that exclude it cause
+exactly zero service loss and move concentration by less than half a point.
+Concentration is the load-bearing failure mode; the other four agents mostly
+spend the slack that would otherwise hide it. Logistics alone never proposes
+anything at all: with cover intact, service is already at 100% and no
+expediting candidate clears the threshold. It only starts acting once somebody
+else has made service tight.
+
+**Two pairs are sub-additive.** Procurement + Logistics (−11.2) and
+Procurement + Sales (−6.6) do *less* damage than Procurement alone. Logistics
+shortens lead times and Sales raises the demand plan; both push material into
+the network and partly offset the concentration Procurement is building.
+Pairing the wrong two agents can improve resilience by accident, for reasons no
+agent involved is aware of.
 
 ## Superlinearity: all five against the sum of the solos
 
-| Seed | Sum of the five solos | All five together | Ratio |
-|---|---|---|---|
-| CASCADE-1 | +42.5 | +46.7 | 1.10× |
-| CASCADE-2 | +14.7 | +53.5 | **3.63×** |
-| CASCADE-3 | +26.7 | +37.2 | 1.39× |
+| Seed | Sum of the five solos | All five together | Ratio | Worst OTD, all five |
+|---|---|---|---|---|
+| CASCADE-1 | +47.1 | +55.6 | 1.18× | 44.4% |
+| CASCADE-2 | +1.5 | +50.8 | 34.8× | 49.2% |
+| CASCADE-3 | +18.9 | +1.4 | 0.08× | 98.6% |
+| CASCADE-4 | +0.1 | +61.0 | 806× | 39.0% |
+| CASCADE-5 | +0.2 | +53.5 | 293× | 46.5% |
+| CASCADE-6 | +0.9 | +16.4 | 18.4× | 83.6% |
 
-The ratio is large exactly where Procurement solo is weak. On CASCADE-2,
-Procurement alone adds 9.1; all five together add 53.5. Where Procurement solo
-already does most of the damage (CASCADE-1, +36.8), there is less headroom for
-the combination to exceed it and the ratio compresses toward 1.
+On four of six seeds the five agents acting alone cause essentially no damage
+at all — under one point of service between them — while the same five acting
+together cost 16 to 61 points. Median: **+0.9 apart, +52.2 together.**
+
+The ratios are unstable because the denominator is near zero; the honest
+statement is not "n× worse" but that the harm is **almost entirely
+interaction**, with individual contributions rounding to nothing.
+
+CASCADE-3 is the exception and worth reporting: there the full board *protected*
+service better than Procurement alone did (98.6% versus 81.1%). Where
+Procurement's consolidation ran into a source that could not carry the volume,
+the other four agents' expediting and plan uplift covered for it. The board saw
+a good quarter either way.
 
 ## Turns before recovery time doubled
 
-Recovery time: weeks of impaired customer service after the largest single
-source is removed for ten weeks, measured against an identical control run on
-the same random stream, averaged over three starting phases. Reported when the
-smoothed value holds at or above the threshold for three consecutive quarters.
+Recovery time is measured in `health.js` by cloning the world twice on one
+random stream, putting one copy through a standard disruption at its largest
+source — eighteen weeks gone, eighteen at a fifth of normal — and counting the
+weeks of degraded customer service against the untouched control. Averaged over
+three starting phases. Reported when the smoothed value holds at or above the
+threshold for three consecutive quarters.
 
-A network at handover measures **2.0 weeks on every seed tested** — it absorbs
-the loss of its largest source and is back to normal within a fortnight.
+**A network at handover measures 2.0 weeks on every seed tested.** It absorbs
+the loss of its largest single source with a fortnight of degraded service.
 
-Across eight seeds, all proposals approved:
+Eight seeds, every proposal approved:
 
 | Threshold | Median | Range | Seeds reaching it |
 |---|---|---|---|
-| 2× handover (4 wks) | **Q4** | Q3 – Q16 | 8 / 8 |
-| 4× handover (8 wks) | Q7 | Q3 – Q23 | 8 / 8 |
-| 10× handover (20 wks) | Q10 | Q4 – Q38 | 6 / 8 |
+| 2× handover (4 wks) | **Q9** | Q2 – Q36 | 8 / 8 |
+| 4× handover (8 wks) | Q12 | Q2 – Q36 | 8 / 8 |
+| 10× handover (20 wks) | Q33 | Q18 – Q47 | 7 / 8 |
 
-**Recovery time doubles in the first handful of quarters — median turn 4.** On
-the default seed it doubles at Q4, quadruples at Q23 and reaches ten times
-handover at Q38, ending the run around 29 weeks.
+By the end of a run the same disruption costs **21 to 49 weeks** of degraded
+service.
 
-That is the uncomfortable part of the number. The board's first four quarterly
-reviews on a well-played run score 82 to 105 out of 100. In the same four
-quarters the network's ability to come back from losing its largest supplier
-halves, and it goes on halving. Nothing in the interface reports this. The
-figure is on the Risk tab from the first turn, next to the tab the player is
-already looking at, and there is no reason to open it.
+**Recovery time doubles at a median of turn 9 — inside the third year.** On the
+default seed it doubles at Q3, quadruples at Q12 and reaches ten times handover
+at Q33.
+
+That is the uncomfortable part. Through those first nine quarters the board's
+reviews score in the eighties and nineties out of a hundred, landed cost is
+falling, turns are rising and working capital is coming down. Every quarterly
+report card in that period is a good one. In the same nine quarters the
+network's ability to survive losing its largest supplier halves, and goes on
+halving.
+
+Nothing in the interface reports it. The number is on the Risk tab from the
+first turn, one click from the screen the player is already looking at, and
+there is no reason to open it.
