@@ -1,0 +1,13 @@
+CASCADE-1   handover 2.0 wks →  2× at Q  3   4× at Q 12   10× at Q 33   final 20.9 wks   fragility 56.2
+CASCADE-2   handover 2.0 wks →  2× at Q  6   4× at Q  6   10× at Q 18   final 24.4 wks   fragility 56.4
+CASCADE-3   handover 2.0 wks →  2× at Q  9   4× at Q 15   10× at Qnull   final 22.9 wks   fragility 54.5
+CASCADE-4   handover 2.0 wks →  2× at Q 35   4× at Q 36   10× at Q 41   final 39.6 wks   fragility 60.2
+CASCADE-5   handover 2.0 wks →  2× at Q 10   4× at Q 10   10× at Q 19   final 49.3 wks   fragility 60.2
+CASCADE-6   handover 2.0 wks →  2× at Q  2   4× at Q  2   10× at Q 47   final 41.8 wks   fragility 59.4
+CASCADE-7   handover 2.0 wks →  2× at Q 36   4× at Q 36   10× at Q 37   final 35.9 wks   fragility 58.6
+CASCADE-8   handover 2.0 wks →  2× at Q  6   4× at Q  7   10× at Q 21   final 41.8 wks   fragility 67.1
+
+sustained (three consecutive quarters) over 8 seeds:
+  2×  median Q9   range Q2–Q36   (8/8 seeds)
+  4×  median Q12   range Q2–Q36   (8/8 seeds)
+ 10×  median Q33   range Q18–Q47   (7/8 seeds)
