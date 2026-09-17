@@ -355,6 +355,23 @@ window.addEventListener("resize", () => {
         const NEM_MODE_KEY = 'blockshots_lastMode';
         function nemCoresPerBoss(n) { return Math.round(8 * Math.pow(1.18, n - 1)); }
 
+        // ---- Column locks (Warden gimmick + VERSUS sabotage) ----
+        // A piece spawns at x = floor(COLS/2) - 2 and is at most 4 wide, so these are
+        // the columns every new piece appears in. Locking one is an instant kill:
+        // move() treats a locked column as solid, so the piece cannot fall OR step
+        // sideways out, and the game loop reads "cannot fall" as "place it" — at
+        // spawn height that tops you out. Spawn columns are therefore never lockable.
+        const LOCK_SPAWN_MIN = Math.floor(COLS / 2) - 2;
+        const LOCK_SPAWN_MAX = LOCK_SPAWN_MIN + 3;
+        const LOCKABLE_COLS = [];
+        for (let _c = 0; _c < COLS; _c++) if (_c < LOCK_SPAWN_MIN || _c > LOCK_SPAWN_MAX) LOCKABLE_COLS.push(_c);
+        function pickLockedCols() {
+            if (LOCKABLE_COLS.length < 2) return [];
+            let a = randomChoice(LOCKABLE_COLS);
+            let b = randomChoice(LOCKABLE_COLS.filter(c => c !== a));
+            return [a, b];
+        }
+
         // ================= VERSUS MODE (duel over WebRTC) =================
         // Attack economy, deliberately NOT "score a Tetris":
         //   THREAT  — charges from combat. Killing enemies charges it, and clearing a
@@ -385,7 +402,7 @@ window.addEventListener("resize", () => {
 
         const VS_SABOTAGE = [
             { id:'rush',     key:'1', name:'RUSH',     cost:60,  color:NEON_MAGENTA, blurb:'Their gravity 2x, 6s' },
-            { id:'lock',     key:'2', name:'LOCK',     cost:75,  color:NEON_BLUE,    blurb:'2 columns sealed 8s' },
+            { id:'lock',     key:'2', name:'LOCK',     cost:75,  color:NEON_BLUE,    blurb:'2 outer columns, 8s' },
             { id:'flip',     key:'3', name:'FLIP',     cost:95,  color:NEON_CYAN,    blurb:'Gravity inverts 4s' },
             { id:'sap',      key:'4', name:'SAP',      cost:120, color:NEON_ORANGE,  blurb:'Eat 3 of their turrets' }
         ];
@@ -1018,12 +1035,16 @@ function drawLazerStrikeIcon(ctx, x, y, size, color) {
                 if (this.kind === 'O') return; // Only 'O' doesn't rotate
                 let rotated = this.cells.map(([cx, cy]) => [-cy + 1, cx - 1]);
                 let kicks = [[0, 0], [1, 0], [-1, 0], [0, -1]];
+                // Rotation honours locks as well. Without this a piece could spin a
+                // cell into a locked column and then be unable to move at all.
+                let rlocked = (!this.lockExempt && window.gameInstance && window.gameInstance.nemLockedCols) ? window.gameInstance.nemLockedCols : null;
                 for (let [kx, ky] of kicks) {
                     let can = true;
                     for (let [cx, cy] of rotated) {
                         let gx = this.x + cx + kx;
                         let gy = this.y + cy + ky;
-                        if (gx < 0 || gx >= COLS || gy >= ROWS || (gy >= 0 && board[gy][gx] !== null)) {
+                        if (gx < 0 || gx >= COLS || gy >= ROWS || (gy >= 0 && board[gy][gx] !== null) ||
+                            (rlocked && rlocked.length > 0 && rlocked.includes(gx))) {
                             can = false;
                             break;
                         }
@@ -1037,7 +1058,10 @@ function drawLazerStrikeIcon(ctx, x, y, size, color) {
             move(dx, dy, board) {
                 this.x += dx;
                 this.y += dy;
-                let locked = (window.gameInstance && window.gameInstance.nemLockedCols) ? window.gameInstance.nemLockedCols : null; // NEMESIS: Warden column locks
+                // Column locks (Warden gimmick / VERSUS sabotage). A piece already in
+                // the air when the lock landed is exempt — otherwise the lock freezes
+                // it where it stands and the loop tops you out.
+                let locked = (!this.lockExempt && window.gameInstance && window.gameInstance.nemLockedCols) ? window.gameInstance.nemLockedCols : null;
                 for (let [gx, gy] of this.getGlobalCells()) {
                     if (gx < 0 || gx >= COLS || gy >= ROWS || (gy >= 0 && board[gy][gx] !== null) ||
                         (locked && locked.length > 0 && locked.includes(gx))) {
@@ -4871,10 +4895,9 @@ nemesisTick() {
             if (this.nemLockedCols.length > 0) {
                 if (this.nemLockTimer <= 0) { this.nemLockedCols = []; this.nemLockTimer = 8 * FPS; }
             } else if (this.nemLockTimer <= 0) {
-                let pool = [0, 1, 2, 3, 6, 7, 8, 9].filter(c => c < COLS);
-                let a = randomChoice(pool);
-                let b = randomChoice(pool.filter(c => c !== a));
-                this.nemLockedCols = [a, b];
+                // Was [0,1,2,3,6,7,8,9] — but 3 and 6 are spawn columns, so the
+                // Warden had the same (narrower) instant-kill.
+                this.applyColumnLock(pickLockedCols());
                 this.nemLockTimer = 6 * FPS;
             }
         } else if (this.nemLockedCols.length) {
@@ -6309,6 +6332,13 @@ this.ctx.fill();
         return this.gravitySpeed;
     }
 
+    // Locks deny FUTURE placement. The piece already in the air is grandfathered
+    // in, so a lock can never freeze a drop that is already underway.
+    applyColumnLock(cols) {
+        this.nemLockedCols = cols || [];
+        if (this.piece) this.piece.lockExempt = true;
+    }
+
     // ---- REMATCH (both sides have to ask) ----
     vsRequestRematch() {
         if (this.mode !== 'versus' || !this.gameOver) return;
@@ -6426,9 +6456,7 @@ this.ctx.fill();
         if (id === 'rush') {
             this.vsRushTimer = Math.floor(6 * FPS);
         } else if (id === 'lock') {
-            let a = Math.floor(Math.random() * COLS);
-            let b = (a + 1 + Math.floor(Math.random() * (COLS - 1))) % COLS;
-            this.nemLockedCols = [a, b];
+            this.applyColumnLock(pickLockedCols());
             this.vsLockTimer = 8 * FPS;
         } else if (id === 'flip') {
             this.nemGravityFlip = Math.floor(4 * FPS);
