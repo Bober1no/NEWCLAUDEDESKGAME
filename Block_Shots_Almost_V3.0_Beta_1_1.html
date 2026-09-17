@@ -347,6 +347,42 @@ window.addEventListener("resize", () => {
         const NEM_MODE_KEY = 'blockshots_lastMode';
         function nemCoresPerBoss(n) { return Math.round(8 * Math.pow(1.18, n - 1)); }
 
+        // ================= VERSUS MODE (duel over WebRTC) =================
+        // Attack economy, deliberately NOT "score a Tetris":
+        //   THREAT  — charges from combat. Killing enemies charges it, and clearing a
+        //             line charges it by the VALUE OF THE TURRETS YOU DESTROYED doing
+        //             it, not by how many lines. Sacrificing a row of gatlings hits
+        //             hard; flushing a row of junk walls barely registers. At 100 it
+        //             auto-fires a wave of enemies at the opponent.
+        //   SCRAPS  — buys sabotage on keys 1-4, competing directly with your own
+        //             mines/shift/duplicator/lazer. Spend on your defense or their pain.
+        const VS_ICE_CONFIG = {
+            iceServers: [
+                { urls: "stun:stun.relay.metered.ca:80" },
+                { urls: "turn:global.relay.metered.ca:80",                username: "d72feda7d4074d3dee85ef82", credential: "mIh5ckdK66S0tGJj" },
+                { urls: "turn:global.relay.metered.ca:80?transport=tcp",  username: "d72feda7d4074d3dee85ef82", credential: "mIh5ckdK66S0tGJj" },
+                { urls: "turn:global.relay.metered.ca:443",               username: "d72feda7d4074d3dee85ef82", credential: "mIh5ckdK66S0tGJj" },
+                { urls: "turns:global.relay.metered.ca:443?transport=tcp",username: "d72feda7d4074d3dee85ef82", credential: "mIh5ckdK66S0tGJj" }
+            ]
+        };
+        const VS_THREAT_MAX     = 100;   // meter fires at this
+        const VS_KILL_THREAT    = 0.9;   // threat per point of an enemy's scrap_reward
+        const VS_SACRIFICE_MULT = 2.6;   // threat per point of turret value destroyed in a clear
+        const VS_STATE_EVERY    = 8;     // frames between opponent-board snapshots (~7/s)
+        const VS_GATHER_MS      = 9000;  // ICE gathering cap — TURN allocation is slow
+
+        // What a destroyed block is worth as attack fuel. Real firepower pays most,
+        // walls least, so the sacrifice is a genuine choice and not just "clear rows".
+        const VS_TURRET_THREAT = { T: 3.0, L: 3.0, J: 3.0, O: 2.0, S: 1.6, Z: 1.6, H: 1.6, I: 0.8 };
+
+        const VS_SABOTAGE = [
+            { id:'scramble', key:'1', name:'SCRAMBLE', cost:60,  color:NEON_MAGENTA, blurb:'Shuffle their queue' },
+            { id:'lock',     key:'2', name:'LOCK',     cost:75,  color:NEON_BLUE,    blurb:'2 columns sealed 8s' },
+            { id:'flip',     key:'3', name:'FLIP',     cost:95,  color:NEON_CYAN,    blurb:'Gravity inverts 4s' },
+            { id:'sap',      key:'4', name:'SAP',      cost:120, color:NEON_ORANGE,  blurb:'Eat 3 of their turrets' }
+        ];
+        const VS_SAB_BY_ID = {}; for (let s of VS_SABOTAGE) VS_SAB_BY_ID[s.id] = s;
+
 
         const ARTILLERY_ATTACK_COOLDOWN = 2 * FPS; // 3 seconds between attacks
         const ARTILLERY_TELEGRAPH_TIME = 1 * FPS; // 1 second warning
@@ -2192,6 +2228,7 @@ if (etype === 'artillery' || etype === 'tank') {
         this.mouseY = 0;
         this.restartButtonHovered = false;
         this.restartButtonHoverTransition = 0; // 0 = normal, 1 = fully hovered
+        this.vsInstall();   // VERSUS: bind the data channel to this run
         requestAnimationFrame(this.loop.bind(this));
     }
     
@@ -2265,6 +2302,7 @@ this.scars = [];                 // accumulated scar ids (stack)
 this.runMods = { twin:false, napalm:false, siege:0, bounty:0, salvage:false, btCharges:0, walls:false, glass:false, allinPay:0, allinHp:0 };
 this.nemDepth = 1;               // current boss number ("depth")
 this.nemBossQueue = [];          // rolled boss order, one 8-boss cycle at a time
+this.vsResetState();             // VERSUS: threat meter, sabotage, opponent mirror
 this.runCores = 0;               // Cores banked this run (awarded per boss kill)
 this.nemState = 'countdown';     // countdown -> fight -> reward -> draft -> countdown ...
 this.nemTimer = NEM_COUNTDOWN;
@@ -3053,6 +3091,16 @@ window.gameInstance = this;
         }
     }
 
+    // VERSUS: sabotage buttons in the left panel
+    if (this.mode === 'versus' && !this.gameOver && !this.paused && !this.skillTreeOpen && this.vsSabBounds) {
+        for (let b of this.vsSabBounds) {
+            if (mouseX >= b.x && mouseX <= b.x + b.w && mouseY >= b.y && mouseY <= b.y + b.h) {
+                this.vsSendSabotage(b.id);
+                return;
+            }
+        }
+    }
+
     // Skill tree: if the menu is open, it captures all clicks
     if (this.skillTreeOpen) { this.handleSkillTreeClick(mouseX, mouseY); return; }
 
@@ -3151,7 +3199,14 @@ window.gameInstance = this;
     if (key === 'r') { if (this.gameOver) this.reset(); }
     if (key === 'm') { if (this.gameOver) this.toggleMode(); } // NEMESIS: mode switch on death screen
     if (key === 't') { if (!this.gameOver && !this.draftOpen) { this.skillTreeOpen = !this.skillTreeOpen; if (this.skillTreeOpen) this.metaNeedCenter = true; } }
-    if (key === 'escape') { this.skillTreeOpen = false; }
+    if (key === 'escape') { this.skillTreeOpen = false; VSLobby.hide(); }
+    if (key === 'v') { VSLobby.toggle(); return; } // VERSUS: connect/disconnect panel
+    // VERSUS: sabotage hotkeys. Guarded on mode so they cannot collide with the
+    // nemesis draft, which binds 1/2/3 and only ever opens in nemesis.
+    if (this.mode === 'versus' && !this.draftOpen && !this.paused && !this.gameOver && !this.skillTreeOpen) {
+        let sab = VS_SABOTAGE.find(x => x.key === key);
+        if (sab) { this.vsSendSabotage(sab.id); return; }
+    }
     // NEMESIS: draft hotkeys 1/2/3
     if (this.draftOpen && (key === '1' || key === '2' || key === '3')) {
         let idx = parseInt(key) - 1;
@@ -3658,6 +3713,7 @@ updateArtilleryAttacks() {
         if (gy < 0) {
     this.gameOver = true; 
     this.gameOverReason = "stacked to top";
+    if (this.mode === 'versus') VSNet.send({ t: 'dead' }); // VERSUS: concede the duel
     // Lock performance mode if not already set (for short games)
     if (this.gameplayPerformanceMode === null) {
         this.gameplayPerformanceMode = this.currentFps < 40 ? 'powersaver' : 'normal';
@@ -3845,6 +3901,19 @@ for (let e of this.enemies) {
         if (lines === 4) e.stunned = 2 * FPS;
     }
 }
+
+        // VERSUS: a clear is an attack worth exactly what it costs you - price the
+        // turrets about to be deleted, not the number of rows.
+        if (this.mode === 'versus') {
+            let sacrifice = 0;
+            for (let y of full) {
+                for (let x = 0; x < COLS; x++) {
+                    let c = this.board[y][x];
+                    if (c && c.shape) sacrifice += (VS_TURRET_THREAT[c.shape] || 1);
+                }
+            }
+            this.vsAddThreat(sacrifice * VS_SACRIFICE_MULT);
+        }
 
         // remove rows from bottom->top (descending indices) so indexes stay valid
         full.sort((a, b) => b - a);
@@ -4321,6 +4390,7 @@ for (let e of this.enemies) {
                         if (this.runMods && this.runMods.salvage) enemyScrapReward *= 2; // NEMESIS: Salvage Surge
                         this.scraps += enemyScrapReward;
                         this.totalScrapsEarned += enemyScrapReward; // Track total scraps earned
+                        this.vsAddThreat(e.scrap_reward * VS_KILL_THREAT); // VERSUS: combat charges the meter
                         let [cx, cy] = e.getPositionAtMs(Date.now());
                         this.spawnExplosionParticles(cx, cy, e.color, 10, 1.6);
                         this.enemies.splice(i, 1);
@@ -4345,6 +4415,7 @@ for (let e of this.enemies) {
     }
     this.gameOver = true;
     this.gameOverReason = "enemy reached top";
+    if (this.mode === 'versus') VSNet.send({ t: 'dead' }); // VERSUS: concede the duel
     // Lock performance mode if not already set (for short games)
     if (this.gameplayPerformanceMode === null) {
         this.gameplayPerformanceMode = this.currentFps < 40 ? 'powersaver' : 'normal';
@@ -4420,6 +4491,9 @@ gameTick() {
         }
         return;
     }
+
+    // VERSUS: sabotage timers + opponent snapshots ride alongside the wave machinery
+    if (this.mode === 'versus') this.vsTick();
 
     // IMPORTANT: Check for boss wave every frame (not just on level change)
     this.checkForBossWave();
@@ -4510,6 +4584,15 @@ this.enemies.push(new Enemy('tank', rightCol, this.level));
 
 // ====================== NEMESIS MODE ENGINE ======================
 toggleMode() {
+    // VERSUS is entered from the lobby, never from this toggle — leaving it drops
+    // the duel and puts you back in classic.
+    if (this.mode === 'versus') {
+        VSNet.reset();
+        this.mode = 'classic';
+        try { localStorage.setItem(NEM_MODE_KEY, this.mode); } catch (e) {}
+        this.reset();
+        return;
+    }
     this.mode = this.mode === 'nemesis' ? 'classic' : 'nemesis';
     try { localStorage.setItem(NEM_MODE_KEY, this.mode); } catch (e) {}
     this.reset();
@@ -5530,6 +5613,12 @@ let scaledDamage = d.damage * levelMultiplier;
         this.drawNemesisHUD();
     }
 
+    // VERSUS: opponent mirror + threat meter + sabotage rack
+    if (this.mode === 'versus' && !this.gameOver) {
+        this.drawVersusPanel();
+        this.drawVersusHUD();
+    }
+
     // Add this at the end of the draw() method
     drawText(this.ctx, this.currentFps.toString(), 5, 15, 12, WHITE);
 
@@ -6023,6 +6112,10 @@ this.ctx.fill();
         if (this.mode === 'nemesis') {
             lines.push({ text: `NEMESIS \u00b7 Reached Boss ${this.nemDepth} \u00b7 Earned ${this.runCores} Cores`,
                          size: FONT_MED_SIZE, color: NEON_PURPLE, alpha: alpha });
+        } else if (this.mode === 'versus') {
+            let verdict = this.vsWon ? 'YOU WIN' : (this.vsOpponent && this.vsOpponent.dead ? 'YOU WIN' : 'YOU LOSE');
+            lines.push({ text: `VERSUS \u00b7 ${verdict} \u00b7 ${this.vsSentWaves} waves sent`,
+                         size: FONT_MED_SIZE, color: this.vsWon ? NEON_GREEN : NEON_MAGENTA, alpha: alpha });
         }
         lines.push({ text: `Ended: ${this.gameOverReason}`,
                      size: FONT_MED_SIZE, color: NEON_CYAN, alpha: alpha * 0.7 });
@@ -6060,7 +6153,9 @@ this.ctx.fill();
         this.ctx.textBaseline = 'middle';
         this.ctx.font = `${FONT_SMALL_SIZE}px Consolas, monospace`;
         this.ctx.fillStyle = `rgba(${NEON_PURPLE[0]},${NEON_PURPLE[1]},${NEON_PURPLE[2]},${alpha})`;
-        this.ctx.fillText(this.mode === 'nemesis' ? 'SWITCH TO CLASSIC (M)' : 'PLAY NEMESIS MODE (M)', mbx + btnW / 2, mby + btnH / 2);
+        let modeLabel = this.mode === 'versus' ? 'LEAVE VERSUS (M)'
+                      : this.mode === 'nemesis' ? 'SWITCH TO CLASSIC (M)' : 'PLAY NEMESIS MODE (M)';
+        this.ctx.fillText(modeLabel, mbx + btnW / 2, mby + btnH / 2);
         this.ctx.restore();
     }
     
@@ -6116,6 +6211,296 @@ this.ctx.fill();
     this.ctx.restore();
 }
                 
+    // ================= VERSUS: game-side logic =================
+
+    // Wire the transport to this run once, at boot.
+    vsInstall() {
+        VSNet.onMessage = (m) => this.vsReceive(m);
+        VSNet.onOpen    = () => this.vsStart();
+        VSNet.onClose   = () => {
+            if (this.mode !== 'versus') return;
+            this.vsOpponent.connected = false;
+            this.nemAnnounce = { text: 'OPPONENT DISCONNECTED', color: NEON_RED, timer: 4 * FPS };
+        };
+    }
+
+    // Both sides drop into a fresh versus run the moment the channel opens.
+    vsStart() {
+        VSLobby.hide();
+        this.mode = 'versus';
+        this.reset();
+        this.nemAnnounce = { text: 'DUEL START', color: NEON_MAGENTA, timer: 3 * FPS };
+    }
+
+    vsResetState() {
+        this.threat = 0;
+        this.vsSentWaves = 0;
+        this.vsStateTick = 0;
+        this.vsLockTimer = 0;
+        this.vsWon = false;
+        this.vsSabBounds = [];
+        this.vsOpponent = { connected: VSNet.isOpen(), board: null, score: 0, level: 1, threat: 0, dead: false, name: 'OPPONENT' };
+    }
+
+    // ---- THREAT ----
+    vsAddThreat(amount) {
+        if (this.mode !== 'versus' || amount <= 0) return;
+        this.threat += amount;
+        while (this.threat >= VS_THREAT_MAX) {
+            this.threat -= VS_THREAT_MAX;
+            this.vsFireWave();
+        }
+    }
+
+    // A full meter ships a wave to the other board. Size grows with your level so
+    // a long duel escalates instead of stalling.
+    vsFireWave() {
+        let n = Math.min(7, 2 + Math.floor(this.level / 3));
+        this.vsSentWaves++;
+        VSNet.send({ t: 'wave', n: n, lvl: this.level });
+        this.nemAnnounce = { text: 'WAVE SENT  x' + n, color: NEON_RED, timer: 2 * FPS };
+        this.addScreenShake(4);
+    }
+
+    // ---- SABOTAGE (spends scraps) ----
+    vsSendSabotage(id) {
+        if (this.mode !== 'versus' || !VSNet.isOpen()) return;
+        if (this.gameOver || this.paused || this.skillTreeOpen) return;
+        let s = VS_SAB_BY_ID[id];
+        if (!s) return;
+        if (this.scraps < s.cost) {
+            this.nemAnnounce = { text: 'NEED ' + s.cost + ' SCRAPS', color: NEON_RED, timer: 1.2 * FPS };
+            return;
+        }
+        this.scraps -= s.cost;
+        VSNet.send({ t: 'sab', k: id });
+        this.nemAnnounce = { text: s.name + ' SENT', color: s.color, timer: 1.8 * FPS };
+        this.addScreenShake(3);
+    }
+
+    // ---- incoming ----
+    vsReceive(m) {
+        if (this.mode !== 'versus') return;
+        switch (m.t) {
+            case 'wave':
+                this.vsApplyWave(Math.max(1, Math.min(10, m.n | 0)), Math.max(1, Math.min(99, m.lvl | 0)));
+                break;
+            case 'sab':
+                this.vsApplySabotage(String(m.k));
+                break;
+            case 'state':
+                this.vsOpponent.connected = true;
+                this.vsOpponent.board = (typeof m.b === 'string' && m.b.length === ROWS * COLS) ? m.b : this.vsOpponent.board;
+                this.vsOpponent.score  = m.s | 0;
+                this.vsOpponent.level  = m.l | 0;
+                this.vsOpponent.threat = Math.max(0, Math.min(VS_THREAT_MAX, +m.h || 0));
+                break;
+            case 'dead':
+                this.vsOpponent.dead = true;
+                if (!this.gameOver) {
+                    this.vsWon = true;
+                    this.nemAnnounce = { text: 'THEY TOPPED OUT - YOU WIN', color: NEON_GREEN, timer: 6 * FPS };
+                }
+                break;
+        }
+    }
+
+    vsApplyWave(n, lvl) {
+        let pool = ['grunt', 'sprinter', 'brute', 'bomber'];
+        if (lvl >= 6) pool.push('tank');
+        for (let i = 0; i < n; i++) {
+            this.enemies.push(new Enemy(randomChoice(pool), Math.floor(Math.random() * COLS), Math.max(this.level, lvl)));
+        }
+        this.nemAnnounce = { text: 'INCOMING WAVE  x' + n, color: NEON_ORANGE, timer: 2 * FPS };
+        this.addScreenShake(5);
+    }
+
+    // These reuse the nemesis gimmick fields, which the board and gravity code
+    // already honour regardless of mode — only the timers are ours to run.
+    vsApplySabotage(id) {
+        let s = VS_SAB_BY_ID[id];
+        if (!s) return;
+        if (id === 'scramble') {
+            this.nextPiece = new Piece(randomChoice(Object.keys(SHAPES)));
+            this.holdPiece = null;
+            this.duplicatorQueue = [];
+        } else if (id === 'lock') {
+            let a = Math.floor(Math.random() * COLS);
+            let b = (a + 1 + Math.floor(Math.random() * (COLS - 1))) % COLS;
+            this.nemLockedCols = [a, b];
+            this.vsLockTimer = 8 * FPS;
+        } else if (id === 'flip') {
+            this.nemGravityFlip = Math.floor(4 * FPS);
+        } else if (id === 'sap') {
+            let cells = [];
+            for (let y = 0; y < ROWS; y++) for (let x = 0; x < COLS; x++) if (this.board[y][x] !== null) cells.push([y, x]);
+            for (let k = 0; k < 3 && cells.length; k++) {
+                let i = Math.floor(Math.random() * cells.length);
+                let [y, x] = cells.splice(i, 1)[0];
+                this.spawnExplosionParticles(LEFT_PANEL_WIDTH + x * CELL + CELL / 2, y * CELL + CELL / 2, NEON_ORANGE, 10, 2.2);
+                this.board[y][x] = null;
+            }
+            this.applyHelperBuffs();
+        }
+        this.nemAnnounce = { text: 'SABOTAGED: ' + s.name, color: s.color, timer: 2.5 * FPS };
+        this.addScreenShake(6);
+    }
+
+    // ---- per-frame ----
+    vsTick() {
+        if (this.mode !== 'versus') return;
+        // Sabotage timers (nemesisTick owns these in nemesis mode; here they are ours)
+        if (this.vsLockTimer > 0) {
+            this.vsLockTimer--;
+            if (this.vsLockTimer <= 0) this.nemLockedCols = [];
+        }
+        if (this.nemGravityFlip > 0) this.nemGravityFlip--;
+
+        // Ship a board snapshot a few times a second for their minimap
+        if (VSNet.isOpen() && (++this.vsStateTick % VS_STATE_EVERY === 0)) {
+            VSNet.send({ t: 'state', b: this.vsSnapshot(), s: this.score, l: this.level, h: Math.round(this.threat) });
+        }
+    }
+
+    vsSnapshot() {
+        let out = '';
+        for (let y = 0; y < ROWS; y++) {
+            for (let x = 0; x < COLS; x++) {
+                let c = this.board[y][x];
+                out += (c && c.shape) ? c.shape : '.';
+            }
+        }
+        return out;
+    }
+    // ---- VERSUS: opponent panel (overlays the reference lists in the side panel) ----
+    drawVersusPanel() {
+        let ctx = this.ctx;
+        let sx = LEFT_PANEL_WIDTH + GRID_W;
+        let top = Math.floor(230 * 1.1);
+        let pad = Math.floor(20 * 1.1);
+
+        // Blank out the KEY/ENEMIES reference lists — mid-duel you want their board.
+        ctx.fillStyle = 'rgb(14,8,22)';
+        ctx.fillRect(sx, top, SIDE_PANEL, SCREEN_H - top);
+
+        let o = this.vsOpponent;
+        let hdr = o.connected ? 'OPPONENT' : 'OPPONENT (LOST)';
+        drawText(ctx, hdr, sx + pad, top + FONT_MED_SIZE + 6, FONT_MED_SIZE, o.connected ? NEON_MAGENTA : NEON_RED);
+
+        // Their board, drawn small
+        let mc = 12;                                   // minimap cell size
+        let mx = sx + pad, my = top + 34;
+        let mw = COLS * mc, mh = ROWS * mc;
+        ctx.fillStyle = 'rgba(8,5,16,0.95)';
+        ctx.fillRect(mx, my, mw, mh);
+        ctx.strokeStyle = `rgba(${NEON_MAGENTA[0]},${NEON_MAGENTA[1]},${NEON_MAGENTA[2]},0.55)`;
+        ctx.lineWidth = 1.5;
+        ctx.strokeRect(mx, my, mw, mh);
+        if (o.board) {
+            for (let y = 0; y < ROWS; y++) {
+                for (let x = 0; x < COLS; x++) {
+                    let ch = o.board[y * COLS + x];
+                    if (ch === '.') continue;
+                    let col = COLORS[ch] || WHITE;
+                    ctx.fillStyle = `rgba(${col[0]},${col[1]},${col[2]},0.75)`;
+                    ctx.fillRect(mx + x * mc + 1, my + y * mc + 1, mc - 2, mc - 2);
+                }
+            }
+        } else {
+            drawText(ctx, 'waiting...', mx + 12, my + mh / 2, FONT_SMALL_SIZE, DARK_GRAY);
+        }
+
+        // Their numbers, beside the minimap
+        let tx = mx + mw + 16, ty = my + FONT_SMALL_SIZE + 4;
+        drawText(ctx, `SCORE ${o.score}`, tx, ty, FONT_SMALL_SIZE, WHITE);
+        drawText(ctx, `LEVEL ${o.level}`, tx, ty + 20, FONT_SMALL_SIZE, NEON_BLUE);
+        drawText(ctx, 'THEIR THREAT', tx, ty + 46, Math.floor(FONT_SMALL_SIZE * 0.85), DARK_GRAY);
+        let tw = 120, th = 9;
+        ctx.fillStyle = 'rgba(8,5,16,0.95)';
+        ctx.fillRect(tx, ty + 54, tw, th);
+        ctx.fillStyle = `rgb(${NEON_RED[0]},${NEON_RED[1]},${NEON_RED[2]})`;
+        ctx.fillRect(tx, ty + 54, Math.floor(tw * (o.threat / VS_THREAT_MAX)), th);
+        ctx.strokeStyle = 'rgba(120,90,160,0.6)'; ctx.lineWidth = 1;
+        ctx.strokeRect(tx + 0.5, ty + 54.5, tw, th);
+
+        if (o.dead) drawText(ctx, 'TOPPED OUT', tx, ty + 92, FONT_MED_SIZE, NEON_GREEN);
+
+        drawText(ctx, `WAVES SENT: ${this.vsSentWaves}`, sx + pad, my + mh + 26, FONT_SMALL_SIZE, NEON_ORANGE);
+
+        // Sabotage legend — the left-panel buttons only have room for name + price,
+        // so the "what does it actually do" lives here where there is width to spare.
+        let ly = ty + 130;
+        drawText(ctx, 'SABOTAGE (costs scraps)', tx, ly, Math.floor(FONT_SMALL_SIZE * 0.85), DARK_GRAY);
+        for (let i = 0; i < VS_SABOTAGE.length; i++) {
+            let s2 = VS_SABOTAGE[i], yy = ly + 20 + i * 18;
+            let can = this.scraps >= s2.cost;
+            drawText(ctx, `${s2.key}`, tx, yy, Math.floor(FONT_SMALL_SIZE * 0.85), can ? s2.color : DARK_GRAY);
+            drawText(ctx, s2.blurb, tx + 16, yy, Math.floor(FONT_SMALL_SIZE * 0.85), can ? s2.color : DARK_GRAY);
+        }
+
+        // How the meter fills — the one rule a new player has to be told.
+        drawText(ctx, 'THREAT fills from kills and from the', sx + pad, SCREEN_H - 44, Math.floor(FONT_SMALL_SIZE * 0.8), DARK_GRAY);
+        drawText(ctx, 'turrets you destroy clearing a line.', sx + pad, SCREEN_H - 28, Math.floor(FONT_SMALL_SIZE * 0.8), DARK_GRAY);
+    }
+
+    // ---- VERSUS: threat meter + sabotage buttons (left panel dead space) ----
+    drawVersusHUD() {
+        let ctx = this.ctx;
+        let sx = Math.floor(15 * 1.1);
+        let panelW = LEFT_PANEL_WIDTH - Math.floor(30 * 1.1);
+        let x = sx + 10, w = panelW - 20;
+
+        // Fit into the dead space between the last powerup and the skill tree button,
+        // measured off their real bounds so this can never drift into either of them.
+        let ob = this.orbitalStrikeButtonBounds, kb = this.skillTreeButtonBounds;
+        let top    = (ob && ob.h ? ob.y + ob.h : Math.floor(440 * 1.1)) + 10;
+        let bottom = (kb && kb.h ? kb.y : SCREEN_H - 90) - 8;
+        let y = top;
+
+        // THREAT meter
+        drawText(ctx, 'THREAT', x, y + 10, Math.floor(FONT_SMALL_SIZE * 0.9), NEON_RED);
+        let bh = 12;
+        ctx.fillStyle = 'rgba(8,5,16,0.95)';
+        drawRoundedRect(ctx, x, y + 14, w, bh, 5); ctx.fill();
+        let frac = Math.max(0, Math.min(1, this.threat / VS_THREAT_MAX));
+        if (frac > 0) {
+            ctx.fillStyle = `rgb(${NEON_RED[0]},${NEON_RED[1]},${NEON_RED[2]})`;
+            drawRoundedRect(ctx, x, y + 14, Math.max(4, Math.floor(w * frac)), bh, 5); ctx.fill();
+        }
+        neonRoundedRect(ctx, x, y + 14, w, bh, NEON_RED, 5, 1.2, 4);
+
+        // Sabotage buttons — priced against your own powerups on purpose
+        this.vsSabBounds = [];
+        let gap = 3;
+        let by = y + 32;
+        let bhh = Math.max(20, Math.floor((bottom - by - gap * (VS_SABOTAGE.length - 1)) / VS_SABOTAGE.length));
+        for (let i = 0; i < VS_SABOTAGE.length; i++) {
+            let s = VS_SABOTAGE[i];
+            let yy = by + i * (bhh + gap);
+            let afford = this.scraps >= s.cost;
+            let hot = this.mouseX >= x && this.mouseX <= x + w && this.mouseY >= yy && this.mouseY <= yy + bhh;
+            this.vsSabBounds.push({ x: x, y: yy, w: w, h: bhh, id: s.id });
+
+            ctx.fillStyle = hot && afford ? 'rgba(58,40,90,0.95)' : 'rgba(20,12,32,0.9)';
+            drawRoundedRect(ctx, x, yy, w, bhh, 8); ctx.fill();
+            let c = s.color, a = afford ? 1 : 0.32;
+            ctx.save();
+            ctx.globalAlpha = a;
+            neonRoundedRect(ctx, x, yy, w, bhh, c, 8, 1.2, hot && afford ? 5 : 2);
+            // One line only: the panel is 156px wide and the blurbs live in the
+            // side-panel legend instead of spilling out over the grid.
+            ctx.textBaseline = 'middle';
+            ctx.font = `${Math.floor(FONT_SMALL_SIZE * 0.92)}px Consolas, monospace`;
+            ctx.textAlign = 'left';
+            ctx.fillStyle = `rgb(${c[0]},${c[1]},${c[2]})`;
+            ctx.fillText(`(${s.key}) ${s.name}`, x + 9, yy + bhh / 2);
+            ctx.textAlign = 'right';
+            ctx.fillStyle = afford ? `rgba(${c[0]},${c[1]},${c[2]},0.75)` : `rgba(${NEON_RED[0]},${NEON_RED[1]},${NEON_RED[2]},0.95)`;
+            ctx.fillText(`${s.cost}`, x + w - 9, yy + bhh / 2);
+            ctx.restore();
+        }
+    }
+
 // Easing function
 easeOutCubic(t) {
     return 1 - Math.pow(1 - t, 3);
@@ -6141,6 +6526,205 @@ useBlockDuplicator() {
             }
 }
         function capitalize(s) { return s.charAt(0).toUpperCase() + s.slice(1); }
+
+        // ================= VERSUS: transport =================
+        // One RTCPeerConnection, one ordered data channel, manual copy-paste
+        // signalling. No signalling server to run, so nothing to install and no
+        // terminal needed: host copies a blob, joiner pastes it and copies one back.
+        const VSNet = {
+            pc: null, dc: null, role: null, status: 'idle', lastError: '',
+            onOpen: null, onClose: null, onMessage: null, onStatus: null,
+
+            isOpen() { return !!(this.dc && this.dc.readyState === 'open'); },
+
+            setStatus(s) { this.status = s; if (this.onStatus) this.onStatus(s); },
+
+            reset() {
+                try { if (this.dc) this.dc.close(); } catch (e) {}
+                try { if (this.pc) this.pc.close(); } catch (e) {}
+                this.pc = null; this.dc = null; this.role = null; this.lastError = '';
+                this.setStatus('idle');
+            },
+
+            _wire(dc) {
+                this.dc = dc;
+                dc.onopen    = () => { this.setStatus('connected'); if (this.onOpen) this.onOpen(); };
+                dc.onclose   = () => { this.setStatus('closed');    if (this.onClose) this.onClose(); };
+                dc.onerror   = () => { this.setStatus('closed');    if (this.onClose) this.onClose(); };
+                dc.onmessage = (e) => {
+                    let msg = null;
+                    try { msg = JSON.parse(e.data); } catch (err) { return; }
+                    // Peer traffic is untrusted input: only ever dispatch known verbs.
+                    if (msg && typeof msg.t === 'string' && this.onMessage) this.onMessage(msg);
+                };
+            },
+
+            _newPc() {
+                let pc = new RTCPeerConnection(VS_ICE_CONFIG);
+                pc.oniceconnectionstatechange = () => {
+                    if (pc.iceConnectionState === 'failed' || pc.iceConnectionState === 'disconnected') {
+                        this.lastError = 'ICE ' + pc.iceConnectionState;
+                        this.setStatus('closed');
+                        if (this.onClose) this.onClose();
+                    }
+                };
+                return pc;
+            },
+
+            // Wait for ICE gathering, but never hang forever — TURN allocation can
+            // stall, and a blob with the candidates we already have still connects.
+            _blob() {
+                return new Promise(res => {
+                    let done = false;
+                    let finish = () => {
+                        if (done) return; done = true;
+                        res(btoa(JSON.stringify(this.pc.localDescription)));
+                    };
+                    if (this.pc.iceGatheringState === 'complete') return finish();
+                    this.pc.onicegatheringstatechange = () => {
+                        if (this.pc.iceGatheringState === 'complete') finish();
+                    };
+                    setTimeout(finish, VS_GATHER_MS);
+                });
+            },
+
+            async host() {
+                this.reset();
+                this.role = 'host';
+                this.setStatus('gathering');
+                this.pc = this._newPc();
+                this._wire(this.pc.createDataChannel('blockshots', { ordered: true }));
+                await this.pc.setLocalDescription(await this.pc.createOffer());
+                let blob = await this._blob();
+                this.setStatus('awaiting-answer');
+                return blob;
+            },
+
+            async join(offerBlob) {
+                this.reset();
+                this.role = 'guest';
+                this.setStatus('gathering');
+                this.pc = this._newPc();
+                this.pc.ondatachannel = (e) => this._wire(e.channel);
+                await this.pc.setRemoteDescription(JSON.parse(atob(offerBlob.trim())));
+                await this.pc.setLocalDescription(await this.pc.createAnswer());
+                let blob = await this._blob();
+                this.setStatus('awaiting-connect');
+                return blob;
+            },
+
+            async accept(answerBlob) {
+                await this.pc.setRemoteDescription(JSON.parse(atob(answerBlob.trim())));
+                this.setStatus('awaiting-connect');
+            },
+
+            send(obj) {
+                if (!this.isOpen()) return false;
+                try { this.dc.send(JSON.stringify(obj)); return true; } catch (e) { return false; }
+            }
+        };
+
+        // ================= VERSUS: lobby overlay =================
+        // Plain DOM, because pasting a 3KB blob into a canvas would be miserable.
+        const VSLobby = {
+            el: null, open: false,
+
+            build() {
+                if (this.el) return;
+                let css = document.createElement('style');
+                css.textContent = [
+                    '#vs-lobby{position:fixed;inset:0;display:none;align-items:center;justify-content:center;',
+                    'background:rgba(6,4,12,.86);z-index:9999;font-family:Consolas,monospace;}',
+                    '#vs-lobby.on{display:flex;}',
+                    '#vs-card{width:min(560px,92vw);max-height:90vh;overflow:auto;background:#120a1e;',
+                    'border:2px solid #b06cff;border-radius:16px;padding:22px 24px;box-shadow:0 0 34px rgba(176,108,255,.45);}',
+                    '#vs-card h2{margin:0 0 4px;color:#d7a6ff;font-size:22px;letter-spacing:2px;}',
+                    '#vs-card p.sub{margin:0 0 16px;color:#8a7aa8;font-size:13px;line-height:1.5;}',
+                    '#vs-card .row{display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap;}',
+                    '#vs-card button{flex:1;min-width:120px;background:#1e1136;color:#d7a6ff;border:1.5px solid #b06cff;',
+                    'border-radius:10px;padding:10px 12px;font:inherit;font-size:13px;cursor:pointer;}',
+                    '#vs-card button:hover{background:#2e1a52;}',
+                    '#vs-card button:disabled{opacity:.35;cursor:default;}',
+                    '#vs-card label{display:block;color:#9d8dbb;font-size:11px;letter-spacing:1px;margin:12px 0 5px;}',
+                    '#vs-card textarea{width:100%;height:76px;background:#0b0616;color:#8fe9d0;border:1px solid #3d2a5e;',
+                    'border-radius:8px;padding:8px;font:inherit;font-size:10px;resize:vertical;box-sizing:border-box;}',
+                    '#vs-status{margin-top:14px;padding:9px 11px;border-radius:8px;background:#0b0616;',
+                    'border:1px solid #3d2a5e;color:#8fe9d0;font-size:12px;min-height:17px;}',
+                    '#vs-close{margin-top:14px;width:100%;flex:none;}'
+                ].join('');
+                document.head.appendChild(css);
+
+                let d = document.createElement('div');
+                d.id = 'vs-lobby';
+                d.innerHTML = [
+                    '<div id="vs-card">',
+                    '<h2>VERSUS</h2>',
+                    '<p class="sub">No server, no install. One of you hosts and sends the CODE; the other joins, ',
+                    'sends their REPLY back, and the host pastes it in. Any chat app works.</p>',
+                    '<div class="row"><button id="vs-host">HOST A DUEL</button><button id="vs-join">JOIN A DUEL</button></div>',
+                    '<label>YOUR CODE &mdash; send this to them</label>',
+                    '<textarea id="vs-out" readonly placeholder="press HOST or JOIN"></textarea>',
+                    '<div class="row"><button id="vs-copy">COPY MY CODE</button></div>',
+                    '<label>THEIR CODE &mdash; paste it here</label>',
+                    '<textarea id="vs-in" placeholder="paste the code they sent you"></textarea>',
+                    '<div class="row"><button id="vs-go">USE THEIR CODE</button></div>',
+                    '<div id="vs-status">Idle.</div>',
+                    '<button id="vs-close">CLOSE (V)</button>',
+                    '</div>'
+                ].join('');
+                document.body.appendChild(d);
+                this.el = d;
+
+                let $ = id => document.getElementById(id);
+                let say = t => { $('vs-status').textContent = t; };
+
+                $('vs-host').onclick = async () => {
+                    say('Gathering connection candidates (up to 9s)...');
+                    try {
+                        let blob = await VSNet.host();
+                        $('vs-out').value = blob;
+                        say('Code ready. Send it to them, then paste their REPLY below.');
+                    } catch (e) { say('Host failed: ' + e.message); }
+                };
+                $('vs-join').onclick = () => {
+                    say('Paste the code they sent you below, then press USE THEIR CODE.');
+                    $('vs-in').focus();
+                };
+                $('vs-copy').onclick = () => {
+                    let ta = $('vs-out');
+                    if (!ta.value) return say('Nothing to copy yet.');
+                    ta.select();
+                    try { document.execCommand('copy'); say('Copied. Send it to them.'); }
+                    catch (e) { say('Copy failed - select the text and copy it manually.'); }
+                };
+                $('vs-go').onclick = async () => {
+                    let v = $('vs-in').value.trim();
+                    if (!v) return say('Paste their code first.');
+                    try {
+                        if (VSNet.role === 'host' && VSNet.pc) {
+                            await VSNet.accept(v);
+                            say('Reply accepted. Connecting...');
+                        } else {
+                            say('Gathering connection candidates (up to 9s)...');
+                            let blob = await VSNet.join(v);
+                            $('vs-out').value = blob;
+                            say('Your REPLY is ready above. Copy it and send it back to the host.');
+                        }
+                    } catch (e) { say('That code did not work: ' + e.message); }
+                };
+                $('vs-close').onclick = () => this.hide();
+
+                VSNet.onStatus = (s) => {
+                    if (s === 'connected') say('CONNECTED. Starting the duel...');
+                    else if (s === 'closed') say('Disconnected. ' + (VSNet.lastError || ''));
+                };
+            },
+
+            show() { this.build(); this.el.classList.add('on'); this.open = true; },
+            hide() { if (this.el) this.el.classList.remove('on'); this.open = false; },
+            toggle() { this.open ? this.hide() : this.show(); }
+        };
+
         // ----------------- ENTRY POINT -----------------
         new Game();
     </script>
