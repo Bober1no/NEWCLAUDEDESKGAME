@@ -6025,28 +6025,36 @@ this.ctx.fill();
         this.ctx.fillText(this.gameOverModeText, panelX + panelWidth/2, footerY + 22);
         this.ctx.restore();
 
-        // Animated restart button - moved down more
-        this.drawEnhancedRestartButton(panelX + panelWidth/2, footerY + 55, alpha);
+        // Buttons sit side by side in one row, on the same two columns as the stat
+        // boxes above, anchored off the panel's bottom edge so nothing hangs out.
+        let btnW = (panelWidth - 80) / 2;   // matches boxWidth in drawStatBoxGrid
+        let btnGap = 15;                    // matches its spacing
+        let btnH = 38;
+        let btnY = panelY + panelHeight - 18 - btnH;
+        let leftX = panelX + 40;
+        let rightX = leftX + btnW + btnGap;
 
-        // NEMESIS: mode picker button below the restart button
-        let mw = 280, mh2 = 30;
-        let mbx = panelX + panelWidth / 2 - mw / 2;
-        let mby = footerY + 82;
-        this.modeButtonBounds = { x: mbx, y: mby, w: mw, h: mh2 };
-        let mHot = this.mouseX >= mbx && this.mouseX <= mbx + mw && this.mouseY >= mby && this.mouseY <= mby + mh2;
+        // Animated restart button (left column)
+        this.drawEnhancedRestartButton(leftX + btnW / 2, btnY + btnH / 2, alpha, btnW, btnH);
+
+        // NEMESIS: mode picker (right column)
+        let mbx = rightX, mby = btnY;
+        this.modeButtonBounds = { x: mbx, y: mby, w: btnW, h: btnH };
+        let mHot = this.mouseX >= mbx && this.mouseX <= mbx + btnW && this.mouseY >= mby && this.mouseY <= mby + btnH;
         this.ctx.save();
         this.ctx.fillStyle = mHot ? 'rgba(58,40,90,0.95)' : 'rgba(26,17,42,0.9)';
-        drawRoundedRect(this.ctx, mbx, mby, mw, mh2, 10);
+        drawRoundedRect(this.ctx, mbx, mby, btnW, btnH, 12);
         this.ctx.fill();
-        neonRoundedRect(this.ctx, mbx, mby, mw, mh2, NEON_PURPLE, 10, 1.5, mHot ? 6 : 3);
+        neonRoundedRect(this.ctx, mbx, mby, btnW, btnH, NEON_PURPLE, 12, 1.5, mHot ? 6 : 3);
         this.ctx.textAlign = 'center';
+        this.ctx.textBaseline = 'middle';
         this.ctx.font = `${FONT_SMALL_SIZE}px Consolas, monospace`;
         this.ctx.fillStyle = `rgba(${NEON_PURPLE[0]},${NEON_PURPLE[1]},${NEON_PURPLE[2]},${alpha})`;
-        this.ctx.fillText(this.mode === 'nemesis' ? 'SWITCH TO CLASSIC (M)' : 'PLAY NEMESIS MODE (M)', mbx + mw / 2, mby + 20);
+        this.ctx.fillText(this.mode === 'nemesis' ? 'SWITCH TO CLASSIC (M)' : 'PLAY NEMESIS MODE (M)', mbx + btnW / 2, mby + btnH / 2);
         this.ctx.restore();
     }
     
-    drawEnhancedRestartButton(centerX, centerY, baseAlpha) {
+    drawEnhancedRestartButton(centerX, centerY, baseAlpha, baseWidth = 240, baseHeight = 36) {
     // Fade the restart button in with the same alpha as the main box
     let alpha = Math.max(0, (this.gameOverFadeAlpha - 0.3) * 1.4);
     if (alpha <= 0) return;
@@ -6060,30 +6068,30 @@ this.ctx.fill();
     let hoverBrightness = 1 + (this.restartButtonHoverTransition * 0.5); // 50% brighter on hover
     
     // Adjusted button dimensions for hover
-    let buttonWidth = 240 * hoverScale;
-    let buttonHeight = 36 * hoverScale;
+    let buttonWidth = baseWidth * hoverScale;
+    let buttonHeight = baseHeight * hoverScale;
     let buttonX = centerX - buttonWidth / 2;
     let buttonY = centerY - buttonHeight / 2;
 
     // Store button bounds for click detection (unchanged)
     this.restartButtonBounds = {
-        x: centerX - 120,
-        y: centerY - 18,
-        w: 240,
-        h: 36
+        x: centerX - baseWidth / 2,
+        y: centerY - baseHeight / 2,
+        w: baseWidth,
+        h: baseHeight
     };
 
     // Button background — alpha scales with finalAlpha and hover brightness
     let bgAlpha = Math.min(1.0, 0.3 * finalAlpha * hoverBrightness);
     this.ctx.fillStyle = `rgba(${NEON_CYAN[0]},${NEON_CYAN[1]},${NEON_CYAN[2]},${bgAlpha})`;
-    drawRoundedRect(this.ctx, buttonX, buttonY, buttonWidth, buttonHeight, 18 * hoverScale);
+    drawRoundedRect(this.ctx, buttonX, buttonY, buttonWidth, buttonHeight, Math.min(18, buttonHeight / 2) * hoverScale);
     this.ctx.fill();
 
     // Button border — alpha scales with finalAlpha and hover brightness
     let borderAlpha = Math.min(1.0, 0.8 * finalAlpha * hoverBrightness);
     this.ctx.strokeStyle = `rgba(${NEON_CYAN[0]},${NEON_CYAN[1]},${NEON_CYAN[2]},${borderAlpha})`;
     this.ctx.lineWidth = 3;
-    drawRoundedRect(this.ctx, buttonX, buttonY, buttonWidth, buttonHeight, 18 * hoverScale);
+    drawRoundedRect(this.ctx, buttonX, buttonY, buttonWidth, buttonHeight, Math.min(18, buttonHeight / 2) * hoverScale);
     this.ctx.stroke();
 
     // Button text — now fades with the box and scales with hover
@@ -6093,7 +6101,8 @@ this.ctx.fill();
     let fontSize = Math.floor(FONT_MED_SIZE * hoverScale);
     this.ctx.font = `${fontSize}px Consolas, monospace`;
     this.ctx.textAlign = 'center';
-        this.ctx.fillText("Press R to Restart", centerX, centerY + 5);
+    this.ctx.textBaseline = 'middle';
+    this.ctx.fillText("Press R to Restart", centerX, centerY);
     this.ctx.restore();
 }
                 
