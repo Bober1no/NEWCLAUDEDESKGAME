@@ -5587,7 +5587,7 @@ let scaledDamage = d.damage * levelMultiplier;
         this.ctx.fillStyle = `rgba(0,0,0,${breathe * this.gameOverFadeAlpha})`;
         this.ctx.fillRect(0, 0, SCREEN_W, SCREEN_H);
         let panelWidth = Math.floor(500 * 1.1);
-        let panelHeight = Math.floor(350 * 1.1);
+        let panelHeight = Math.floor(350 * 1.1) + 40; // +40: leading for the summary lines under the stat grid
         let panelX = SCREEN_W / 2 - panelWidth / 2;
         let panelY = SCREEN_H / 2 - panelHeight / 2;
         this.drawEdgeGlow();
@@ -6000,39 +6000,49 @@ this.ctx.fill();
     }
     
     drawGameOverFooter(panelX, panelY, panelWidth, panelHeight) {
-        let footerY = panelY + panelHeight - 90; // Moved up 50px to compensate for taller panel
         let alpha = Math.max(0, (this.gameOverFadeAlpha - 0.3) * 1.4);
-        
         if (alpha <= 0) return;
-        
-        // Game over reason - larger text
-        this.ctx.save();
-        this.ctx.fillStyle = `rgba(${NEON_CYAN[0]},${NEON_CYAN[1]},${NEON_CYAN[2]},${alpha * 0.7})`;
-        this.ctx.font = `${FONT_MED_SIZE}px Consolas, monospace`;
-        this.ctx.textAlign = 'center';
-        this.ctx.fillText(`Ended: ${this.gameOverReason}`, panelX + panelWidth/2, footerY);
 
-        // NEMESIS: run summary — depth reached + Cores banked
-        if (this.mode === 'nemesis') {
-            this.ctx.fillStyle = `rgba(${NEON_PURPLE[0]},${NEON_PURPLE[1]},${NEON_PURPLE[2]},${alpha})`;
-            this.ctx.font = `${FONT_MED_SIZE}px Consolas, monospace`;
-            this.ctx.fillText(`NEMESIS · Reached Boss ${this.nemDepth} · Earned ${this.runCores} Cores`, panelX + panelWidth/2, footerY - 22);
-        }
-
-        // Performance mode indicator (full opacity)
-        this.ctx.fillStyle = `rgba(${DARK_GRAY[0]},${DARK_GRAY[1]},${DARK_GRAY[2]},0.6)`;
-        this.ctx.font = `${FONT_SMALL_SIZE * 0.85}px Consolas, monospace`;
-        this.ctx.fillText(this.gameOverModeText, panelX + panelWidth/2, footerY + 22);
-        this.ctx.restore();
+        let centerX = panelX + panelWidth / 2;
 
         // Buttons sit side by side in one row, on the same two columns as the stat
         // boxes above, anchored off the panel's bottom edge so nothing hangs out.
         let btnW = (panelWidth - 80) / 2;   // matches boxWidth in drawStatBoxGrid
         let btnGap = 15;                    // matches its spacing
         let btnH = 38;
-        let btnY = panelY + panelHeight - 18 - btnH;
+        let btnY = panelY + panelHeight - 22 - btnH;
         let leftX = panelX + 40;
         let rightX = leftX + btnW + btnGap;
+
+        // Summary lines fill the gap between the stat grid and that button row.
+        // They're measured and centred as a block so classic mode — which has no
+        // NEMESIS line — doesn't leave a hole where that line would have been.
+        let gridBottom = panelY + 100 + 70 + 15 + 70;   // mirrors drawStatBoxGrid
+        let lineGap = 14;
+        let lines = [];
+        if (this.mode === 'nemesis') {
+            lines.push({ text: `NEMESIS \u00b7 Reached Boss ${this.nemDepth} \u00b7 Earned ${this.runCores} Cores`,
+                         size: FONT_MED_SIZE, color: NEON_PURPLE, alpha: alpha });
+        }
+        lines.push({ text: `Ended: ${this.gameOverReason}`,
+                     size: FONT_MED_SIZE, color: NEON_CYAN, alpha: alpha * 0.7 });
+        lines.push({ text: this.gameOverModeText,
+                     size: Math.floor(FONT_SMALL_SIZE * 0.85), color: DARK_GRAY, alpha: 0.6 });
+        lines = lines.filter(l => l.text);
+
+        let blockH = lines.reduce((h, l) => h + l.size, 0) + lineGap * Math.max(0, lines.length - 1);
+        let y = gridBottom + Math.max(0, (btnY - gridBottom - blockH) / 2);
+
+        this.ctx.save();
+        this.ctx.textAlign = 'center';
+        for (let l of lines) {
+            y += l.size;
+            this.ctx.font = `${l.size}px Consolas, monospace`;
+            this.ctx.fillStyle = `rgba(${l.color[0]},${l.color[1]},${l.color[2]},${l.alpha})`;
+            this.ctx.fillText(l.text, centerX, y);
+            y += lineGap;
+        }
+        this.ctx.restore();
 
         // Animated restart button (left column)
         this.drawEnhancedRestartButton(leftX + btnW / 2, btnY + btnH / 2, alpha, btnW, btnH);
