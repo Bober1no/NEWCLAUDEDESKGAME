@@ -384,12 +384,19 @@ window.addEventListener("resize", () => {
         const VS_TURRET_THREAT = { T: 3.0, L: 3.0, J: 3.0, O: 2.0, S: 1.6, Z: 1.6, H: 1.6, I: 0.8 };
 
         const VS_SABOTAGE = [
-            { id:'scramble', key:'1', name:'SCRAMBLE', cost:60,  color:NEON_MAGENTA, blurb:'Shuffle their queue' },
+            { id:'rush',     key:'1', name:'RUSH',     cost:60,  color:NEON_MAGENTA, blurb:'Their gravity 2x, 6s' },
             { id:'lock',     key:'2', name:'LOCK',     cost:75,  color:NEON_BLUE,    blurb:'2 columns sealed 8s' },
             { id:'flip',     key:'3', name:'FLIP',     cost:95,  color:NEON_CYAN,    blurb:'Gravity inverts 4s' },
             { id:'sap',      key:'4', name:'SAP',      cost:120, color:NEON_ORANGE,  blurb:'Eat 3 of their turrets' }
         ];
         const VS_SAB_BY_ID = {}; for (let s of VS_SABOTAGE) VS_SAB_BY_ID[s.id] = s;
+
+        // Enemy types are sent to the opponent as an index into this list, so their
+        // minimap can colour each dot without shipping colours over the wire.
+        const VS_ETYPES = Object.keys(ENEMY_DEFS).concat(Object.keys(NEM_BOSS_DEFS));
+        const VS_ETYPE_IDX = {}; VS_ETYPES.forEach((k, i) => { VS_ETYPE_IDX[k] = i; });
+        const VS_BIG_ETYPES = { artillery: 1, miner: 1, juggernaut: 1, tank: 1 };
+        const VS_MAX_MIRRORED_ENEMIES = 40;
 
 
         const ARTILLERY_ATTACK_COOLDOWN = 2 * FPS; // 3 seconds between attacks
@@ -3359,7 +3366,7 @@ window.gameInstance = this;
  if (this.nemGravityFlip > 0) {
     // NEMESIS: Inverter gimmick — gravity flips and the piece rises
     this.gravityTimer += 1;
-    if (this.gravityTimer >= this.gravitySpeed) {
+    if (this.gravityTimer >= this.effGravitySpeed()) {
         this.gravityTimer = 0;
         if (this.piece.y > 0) this.piece.move(0, -1, this.board);
     }
@@ -3387,7 +3394,7 @@ window.gameInstance = this;
 } else {
     // Normal gravity (unchanged, still has natural buffer)
     this.gravityTimer += 1;
-    if (this.gravityTimer >= this.gravitySpeed) {
+    if (this.gravityTimer >= this.effGravitySpeed()) {
         this.gravityTimer = 0;
         if (!this.piece.move(0, 1, this.board)) this.placePieceOnBoard();
     }
@@ -6286,11 +6293,20 @@ this.ctx.fill();
         this.vsSentWaves = 0;
         this.vsStateTick = 0;
         this.vsLockTimer = 0;
+        this.vsRushTimer = 0;
         this.vsWon = false;
         this.vsRematchMe = false;
         this.vsRematchThem = false;
         this.vsSabBounds = [];
-        this.vsOpponent = { connected: VSNet.isOpen(), board: null, score: 0, level: 1, threat: 0, dead: false, name: 'OPPONENT' };
+        this.vsOpponent = { connected: VSNet.isOpen(), board: null, enemies: [], score: 0, level: 1, threat: 0, dead: false, name: 'OPPONENT' };
+    }
+
+    // Gravity actually used this frame. gravitySpeed is recomputed from level in
+    // several places, so RUSH scales it here at the point of use rather than
+    // writing a value that would get clobbered on the next level change.
+    effGravitySpeed() {
+        if (this.vsRushTimer > 0) return Math.max(2, Math.floor(this.gravitySpeed * 0.5));
+        return this.gravitySpeed;
     }
 
     // ---- REMATCH (both sides have to ask) ----
@@ -6365,6 +6381,7 @@ this.ctx.fill();
             case 'state':
                 this.vsOpponent.connected = true;
                 this.vsOpponent.board = (typeof m.b === 'string' && m.b.length === ROWS * COLS) ? m.b : this.vsOpponent.board;
+                this.vsOpponent.enemies = (Array.isArray(m.e) && m.e.length % 3 === 0 && m.e.length <= VS_MAX_MIRRORED_ENEMIES * 3) ? m.e : [];
                 this.vsOpponent.score  = m.s | 0;
                 this.vsOpponent.level  = m.l | 0;
                 this.vsOpponent.threat = Math.max(0, Math.min(VS_THREAT_MAX, +m.h || 0));
@@ -6406,10 +6423,8 @@ this.ctx.fill();
     vsApplySabotage(id) {
         let s = VS_SAB_BY_ID[id];
         if (!s) return;
-        if (id === 'scramble') {
-            this.nextPiece = new Piece(randomChoice(Object.keys(SHAPES)));
-            this.holdPiece = null;
-            this.duplicatorQueue = [];
+        if (id === 'rush') {
+            this.vsRushTimer = Math.floor(6 * FPS);
         } else if (id === 'lock') {
             let a = Math.floor(Math.random() * COLS);
             let b = (a + 1 + Math.floor(Math.random() * (COLS - 1))) % COLS;
@@ -6440,12 +6455,26 @@ this.ctx.fill();
             this.vsLockTimer--;
             if (this.vsLockTimer <= 0) this.nemLockedCols = [];
         }
+        if (this.vsRushTimer > 0) this.vsRushTimer--;
         if (this.nemGravityFlip > 0) this.nemGravityFlip--;
 
         // Ship a board snapshot a few times a second for their minimap
         if (VSNet.isOpen() && (++this.vsStateTick % VS_STATE_EVERY === 0)) {
-            VSNet.send({ t: 'state', b: this.vsSnapshot(), s: this.score, l: this.level, h: Math.round(this.threat) });
+            VSNet.send({ t: 'state', b: this.vsSnapshot(), e: this.vsEnemySnapshot(),
+                         s: this.score, l: this.level, h: Math.round(this.threat) });
         }
+    }
+
+    // Enemies as a flat [col, row*2, typeIndex, ...] triplet list. Half-cell rows
+    // are plenty for a 12px minimap and keep the message tiny.
+    vsEnemySnapshot() {
+        let out = [];
+        for (let i = 0; i < this.enemies.length && out.length < VS_MAX_MIRRORED_ENEMIES * 3; i++) {
+            let e = this.enemies[i];
+            if (e.hp <= 0) continue;
+            out.push(e.col, Math.round(e.y * 2), VS_ETYPE_IDX[e.etype] === undefined ? 0 : VS_ETYPE_IDX[e.etype]);
+        }
+        return out;
     }
 
     vsSnapshot() {
@@ -6496,6 +6525,29 @@ this.ctx.fill();
             drawText(ctx, 'waiting...', mx + 12, my + mh / 2, FONT_SMALL_SIZE, DARK_GRAY);
         }
 
+        // Their enemies, drawn over their blocks. Without these the mirror shows a
+        // tidy stack and tells you nothing about whether they are actually drowning.
+        let en = o.enemies || [];
+        for (let i = 0; i + 2 < en.length; i += 3) {
+            let ec = en[i], ey = en[i + 1] / 2, et = VS_ETYPES[en[i + 2]];
+            if (ec < 0 || ec >= COLS || ey < -1 || ey > ROWS) continue;
+            let def = ENEMY_DEFS[et] || NEM_BOSS_DEFS[et];
+            if (!def) continue;
+            let col = def.color;
+            let big = VS_BIG_ETYPES[et] || NEM_BOSS_DEFS[et];
+            let r = big ? mc * 0.46 : mc * 0.3;
+            let px = mx + ec * mc + mc / 2, py = my + ey * mc + mc / 2;
+            ctx.beginPath();
+            ctx.arc(px, py, r, 0, Math.PI * 2);
+            ctx.fillStyle = `rgb(${col[0]},${col[1]},${col[2]})`;
+            ctx.fill();
+            ctx.lineWidth = 1;
+            ctx.strokeStyle = 'rgba(0,0,0,0.65)';
+            ctx.stroke();
+        }
+        drawText(ctx, `THEIR ENEMIES: ${Math.floor(en.length / 3)}`, mx, my + mh + 26, Math.floor(FONT_SMALL_SIZE * 0.85),
+                 en.length ? NEON_RED : DARK_GRAY);
+
         // Their numbers, beside the minimap
         let tx = mx + mw + 16, ty = my + FONT_SMALL_SIZE + 4;
         drawText(ctx, `SCORE ${o.score}`, tx, ty, FONT_SMALL_SIZE, WHITE);
@@ -6511,7 +6563,7 @@ this.ctx.fill();
 
         if (o.dead) drawText(ctx, 'TOPPED OUT', tx, ty + 92, FONT_MED_SIZE, NEON_GREEN);
 
-        drawText(ctx, `WAVES SENT: ${this.vsSentWaves}`, sx + pad, my + mh + 26, FONT_SMALL_SIZE, NEON_ORANGE);
+        drawText(ctx, `WAVES SENT: ${this.vsSentWaves}`, sx + pad, my + mh + 48, FONT_SMALL_SIZE, NEON_ORANGE);
 
         // Sabotage legend — the left-panel buttons only have room for name + price,
         // so the "what does it actually do" lives here where there is width to spare.
@@ -6543,8 +6595,17 @@ this.ctx.fill();
         let bottom = (kb && kb.h ? kb.y : SCREEN_H - 90) - 8;
         let y = top;
 
-        // THREAT meter
-        drawText(ctx, 'THREAT', x, y + 10, Math.floor(FONT_SMALL_SIZE * 0.9), NEON_RED);
+        // THREAT meter (or the RUSH warning, which matters more while it is running)
+        if (this.vsRushTimer > 0) {
+            let secs = (this.vsRushTimer / FPS).toFixed(1);
+            let pulse = 0.55 + 0.45 * Math.sin(this.gameOverAnimTime * 12 + this.vsRushTimer * 0.2);
+            ctx.save();
+            ctx.globalAlpha = pulse;
+            drawText(ctx, `RUSHED ${secs}s`, x, y + 10, Math.floor(FONT_SMALL_SIZE * 0.9), NEON_MAGENTA);
+            ctx.restore();
+        } else {
+            drawText(ctx, 'THREAT', x, y + 10, Math.floor(FONT_SMALL_SIZE * 0.9), NEON_RED);
+        }
         let bh = 12;
         ctx.fillStyle = 'rgba(8,5,16,0.95)';
         drawRoundedRect(ctx, x, y + 14, w, bh, 5); ctx.fill();
