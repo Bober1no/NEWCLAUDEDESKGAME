@@ -14,12 +14,13 @@ Run:
 Mic button (or Ctrl+M) turns voice input on and off. Typing always works.
 """
 
-import io, queue, sys, threading, time
+import io, os, queue, sys, threading, time
 import tkinter as tk
 from tkinter import ttk
 
 import jarvis
 import stt
+import tts
 
 try:
     from PIL import Image, ImageTk
@@ -34,7 +35,10 @@ STT_URL      = "http://127.0.0.1:8178"   # whisper-server address, for "whisperc
 STT_LANGUAGE = "en"                      # "" to auto-detect
 AUTO_SEND    = True                      # send what you said straight away (untick in the app to edit first)
 END_SILENCE  = 1.2                       # seconds of quiet before it decides you've finished (slider in the app)
-QUIET_FOR    = 0.8                       # phone silent this long = finished talking, listen again
+VOICE        = os.environ.get("VOICE", "")      # Windows voice; start-jarvis.bat sets this. "" = default
+SPEED        = int(os.environ.get("SPEED", "0") or 0)   # -10 slow .. 10 fast
+ECHO_TAIL    = 0.3                       # after the phone's last word, wait this long for the room to go quiet
+QUIET_FOR    = 0.8                       # only if the voice falls back to say-helper.ps1: phone silent this long = done
 WORDS_PER_S  = 2.5                       # how fast the phone talks; only a fallback if it doesn't report it
 VIEW_MAX     = 440                       # width of the "what Jarvis sees" picture
 # -------------------------------------------------------------------------
@@ -55,6 +59,7 @@ class Brain:
         self.pending = 0
         self.system = jarvis.TENANT if "--tenant" in sys.argv else jarvis.JARVIS
         self.on_sentence = lambda s: None
+        self.say = jarvis.say                       # replaced by the direct voice once it starts
         threading.Thread(target=self._loop, daemon=True).start()
 
     @property
@@ -101,7 +106,7 @@ class Brain:
         self.post("bot_start", self.name.lower())
 
         def sentence(s):
-            jarvis.say(s)
+            self.say(s)
             self.on_sentence(s)
             self.post("bot_text", s)
 
@@ -130,6 +135,7 @@ class App:
         self.mic_on = False
         self.speak_until = 0.0
         self.recent_replies = []
+        self.speaker = None
         self._photo = None
 
         root.title(f"{self.brain.name} - LocalIPCam")
@@ -322,8 +328,18 @@ class App:
         """Jarvis has answered everything: listen again once the phone stops talking."""
         if self.listener is not None:
             self._idle_id = getattr(self, "_idle_id", 0) + 1
-            threading.Thread(target=self._release_when_quiet, args=(self._idle_id,),
-                             daemon=True).start()
+            wait = self._release_when_spoken if self.speaker else self._release_when_quiet
+            threading.Thread(target=wait, args=(self._idle_id,), daemon=True).start()
+
+    def _release_when_spoken(self, my_id):
+        """Direct voice: the phone answers each /talk once it has played it, so the
+        speaker knows exactly when the last word ended."""
+        listener = self.listener
+        while my_id == self._idle_id and not self.brain.busy():
+            if not self.speaker.busy:
+                listener.release(self.speaker.finished_at + ECHO_TAIL)
+                return
+            time.sleep(0.03)
 
     def _release_when_quiet(self, my_id):
         """Watch the phone's /status until it has nothing left to say and has stopped
@@ -360,10 +376,15 @@ class App:
         caught the phone speaking."""
         from difflib import SequenceMatcher
         words = stt._norm(text).split()
-        if len(words) < 4:
+        if len(words) < 2:
             return False
         for reply in self.recent_replies:
             said = stt._norm(reply).split()
+            if len(words) < 4:
+                # short: only if it's exactly how his reply ended (the mic caught his last words)
+                if said[-len(words):] == words:
+                    return True
+                continue
             m = SequenceMatcher(None, words, said, autojunk=False)
             same = sum(blk.size for blk in m.get_matching_blocks())
             longest = max(blk.size for blk in m.get_matching_blocks())
@@ -536,8 +557,23 @@ class App:
         except Exception as e:
             self._on_sys(f"couldn't show snapshot: {e}")
 
+    def _start_voice(self):
+        if not jarvis.SPEAK:
+            return
+        sp = tts.Speaker(jarvis.PHONE, jarvis.auth, VOICE, SPEED,
+                         on_error=lambda e: self.post("sys", e))
+        try:
+            sp.start()
+        except Exception as e:
+            self.post("sys", f"direct voice didn't start ({e}); using say-helper.ps1 instead")
+            return
+        self.speaker = sp
+        self.brain.say = sp.say
+        self.post("sys", f"voice: {sp.voice_name}, straight to the phone")
+
     def _startup_checks(self):
         import requests
+        threading.Thread(target=self._start_voice, daemon=True).start()
         try:
             requests.get(f"{jarvis.PHONE}/status", auth=jarvis.auth, timeout=5).raise_for_status()
             self.post("status", "phone", True)
@@ -564,6 +600,8 @@ class App:
     def close(self):
         if self.listener is not None:
             self.listener.stop()
+        if self.speaker is not None:
+            self.speaker.close()
         self.root.destroy()
 
 

@@ -883,8 +883,10 @@ MainActivity.java      UI and controls
 - `jarvis.py` is the brain: settings, prompts, snapshots and the Ollama call. The app
   imports it, so edits there apply to both.
 - `stt.py` is speech to text. It cuts out each thing you say and runs Whisper on it.
-- `say-helper.ps1` polls `/say/next`, synthesises the speech with Windows' voice, and posts
-  the audio to `/talk` so it plays from the phone.
+- `tts.py` is Jarvis's voice. It uses the Windows voice set in `start-jarvis.bat` and sends
+  the audio straight to the phone's `/talk`, so the app knows exactly when he stops talking.
+- `say-helper.ps1` speaks whatever is typed into the phone's Say box. If `tts.py`'s voice
+  can't start, Jarvis uses it as a fallback.
 
 ### Voice input
 
@@ -898,10 +900,10 @@ Click **Mic** (or press Ctrl+M) to turn it on or off. Typing works either way. U
 
 It takes turns like a walkie-talkie. Once you stop talking, the mic stops listening
 while Whisper transcribes, while Jarvis thinks, and while the phone speaks his reply.
-It knows when the phone has finished talking because it watches the phone's `/status`
-(`sayQueued` and `talkbackPlaying`), and it listens again 0.8 s after the phone goes quiet
-(`QUIET_FOR` in `jarvis_app.py`). If the phone doesn't report those, it falls back to
-estimating from the word count. The status next to the meter shows what it's doing.
+It knows exactly when Jarvis finishes, because the phone answers each `/talk` only once
+it has played that audio. It listens again `ECHO_TAIL` (0.3 s) after his last word. If
+the direct voice can't start, it falls back to say-helper.ps1 and watches the phone's
+`/status` instead, which is less exact (`QUIET_FOR`). The status next to the meter shows what it's doing.
 
 If Jarvis hears himself, check that **"Mute mic while talkback plays"** is on in the phone
 app (the app warns you if it's off). Anything Whisper hears that is mostly Jarvis's own

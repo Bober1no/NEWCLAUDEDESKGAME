@@ -23,6 +23,7 @@ if not exist "jarvis.py"        ( echo  [x] jarvis.py is missing from %~dp0 & go
 if not exist "say-helper.ps1"   ( echo  [x] say-helper.ps1 is missing from %~dp0 & goto :fail )
 if not exist "jarvis_app.py"    ( echo  [x] jarvis_app.py is missing from %~dp0 & goto :fail )
 if not exist "stt.py"           ( echo  [x] stt.py is missing from %~dp0 & goto :fail )
+if not exist "tts.py"           ( echo  [x] tts.py is missing from %~dp0 & goto :fail )
 
 rem --- 2. Python + packages
 where py >nul 2>nul && (set "PY=py") || (set "PY=python")
