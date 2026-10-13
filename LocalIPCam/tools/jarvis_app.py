@@ -33,6 +33,7 @@ STT_MODEL    = "large-v3-turbo"          # faster-whisper model. Lighter: "disti
 STT_URL      = "http://127.0.0.1:8178"   # whisper-server address, for "whispercpp"
 STT_LANGUAGE = "en"                      # "" to auto-detect
 AUTO_SEND    = True                      # send what you said straight away (untick in the app to edit first)
+END_SILENCE  = 1.2                       # seconds of quiet before it decides you've finished (slider in the app)
 WORDS_PER_S  = 2.5                       # how fast the phone talks; used to mute the mic meanwhile
 VIEW_MAX     = 520                       # width of the "what Jarvis sees" picture
 # -------------------------------------------------------------------------
@@ -80,6 +81,8 @@ class Brain:
                 self.post("sys", f"something broke: {e}")
             finally:
                 self.pending -= 1
+                if self.pending == 0:
+                    self.post("idle")
 
     def _handle(self, text):
         if text.lower() == "look":
@@ -231,8 +234,17 @@ class App:
         self.mic_state = ttk.Label(microw, text="off  (Ctrl+M)", style="Dim.TLabel")
         self.mic_state.pack(side="left")
         self.auto_send = tk.BooleanVar(value=AUTO_SEND)
-        ttk.Checkbutton(microw, text="send what I say straight away",
+        ttk.Checkbutton(microw, text="send straight away",
                         variable=self.auto_send).pack(side="right")
+        self.pause = tk.DoubleVar(value=END_SILENCE)
+        self.pause_lbl = ttk.Label(microw, style="Dim.TLabel", width=4)
+        self.pause_lbl.pack(side="right", padx=(0, 14))
+        tk.Scale(microw, from_=0.5, to=3.0, resolution=0.1, orient="horizontal",
+                 variable=self.pause, showvalue=False, length=110, bg=BG, fg=FG,
+                 troughcolor="#2a2f37", highlightthickness=0, bd=0, sliderrelief="flat",
+                 command=lambda _v: self._pause_changed()).pack(side="right")
+        ttk.Label(microw, text="pause before sending", style="Dim.TLabel").pack(side="right", padx=6)
+        self._pause_changed()
 
         # input row
         inrow = ttk.Frame(right)
@@ -274,6 +286,8 @@ class App:
         self._write(f"  {text}\n", "sys")
 
     def _on_you(self, text, spoken):
+        if self.listener is not None:
+            self.listener.hold()                    # no listening while Jarvis thinks
         self._write("you (said)> " if spoken else "you> ", "you")
         self._write(text + "\n")
 
@@ -296,10 +310,17 @@ class App:
         if text:
             label.configure(text=text)
 
+    def _on_idle(self):
+        """Jarvis has answered everything: listen again once the phone stops talking."""
+        if self.listener is not None:
+            self.listener.release(self.speak_until + 0.6)
+
     def _on_heard(self, text):
         if self.auto_send.get():
             self.send(text, spoken=True)
         else:
+            if self.listener is not None and not self.brain.busy():
+                self.listener.release()
             self.entry.delete(0, "end")
             self.entry.insert(0, text)
             self.entry.focus_set()
@@ -312,7 +333,8 @@ class App:
         if not self.mic_on:
             state = "off"
         hint = {"listening": "listening...", "hearing you": "hearing you",
-                "transcribing": "transcribing...", "muted": "paused while Jarvis talks",
+                "transcribing": "transcribing...", "waiting": "paused while Jarvis thinks",
+                "muted": "paused while Jarvis talks",
                 "off": "off  (Ctrl+M)"}.get(state, state)
         self.mic_state.configure(text=hint, foreground=MIC if state == "hearing you" else DIM)
 
@@ -346,6 +368,12 @@ class App:
         self.brain.set_mode(tenant)
         self.root.title(f"{self.brain.name} - LocalIPCam")
         self._on_sys(f"switched to {self.brain.name}, memory of this chat cleared")
+
+    def _pause_changed(self):
+        secs = round(self.pause.get(), 1)
+        self.pause_lbl.configure(text=f"{secs:.1f}s")
+        if self.listener is not None:
+            self.listener.end_silence = secs
 
     def _mute_while_speaking(self, sentence):
         """The phone speaks out loud in the same room as the mic. Without this,
@@ -407,10 +435,15 @@ class App:
                 on_level=lambda v: self.post("level", v),
                 on_state=lambda s: self.post("micstate", s),
                 on_error=lambda e: self.post("sys", e),
-                phone=jarvis.PHONE if MIC_SOURCE == "phone" else None, auth=jarvis.auth)
+                phone=jarvis.PHONE if MIC_SOURCE == "phone" else None, auth=jarvis.auth,
+                end_silence=round(self.pause.get(), 1))
+            self._on_sys(f"voice input: Whisper {STT_MODEL if STT_ENGINE == 'faster-whisper' else 'via whisper.cpp'}, "
+                         f"speech detector: {self.listener.vad.name}")
         self.listener.mute_until = max(self.listener.mute_until, self.speak_until + 0.6)
         try:
             self.listener.start()
+            if self.brain.busy():
+                self.listener.hold()
         except Exception as e:
             where = "the phone's mic" if MIC_SOURCE == "phone" else "the microphone"
             self._on_sys(f"couldn't open {where}: {e}")

@@ -894,7 +894,17 @@ By default it listens through **the phone's mic**, streamed from `/audio.pcm`, s
 speaking, which also stops Jarvis hearing himself.
 
 Click **Mic** (or press Ctrl+M) to turn it on or off. Typing works either way. Untick
-"send what I say straight away" if you want to check or edit the text before it's sent.
+"send straight away" if you want to check or edit the text before it's sent.
+
+It takes turns like a walkie-talkie. Once you stop talking, the mic stops listening
+while Whisper transcribes, while Jarvis thinks, and while the phone speaks his reply.
+Then it listens again. The status next to the meter shows which of these it's doing.
+
+**Pause before sending** (the slider, default 1.2 s) is how long you have to be quiet before
+it decides you've finished. Breaths and short pauses mid-sentence don't end your turn.
+If it cuts you off, slide it up. If it's slow to respond, slide it down. The detector
+is Silero VAD, a small neural network that comes with faster-whisper, so fans, breathing
+and clicks don't count as speech.
 
 It uses Whisper `large-v3-turbo`. The first time you turn the mic on it downloads about
 1.6 GB. The mic stream is only open while it's switched on, and it pauses while the phone is

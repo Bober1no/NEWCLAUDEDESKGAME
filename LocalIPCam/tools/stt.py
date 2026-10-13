@@ -1,8 +1,20 @@
 """
 stt.py - speech to text for jarvis_app.py. Everything local.
 
-    mic -> 30 ms blocks -> energy detector cuts out each thing you say
-        -> Whisper turns it into text -> on_text(text)
+    mic -> 32 ms blocks -> speech detector decides when you start and finish talking
+        -> Whisper turns the whole thing into text -> on_text(text)
+
+It's turn-based, like a walkie-talkie: once you finish talking the mic stops listening
+while Whisper transcribes, while Jarvis thinks, and while the phone speaks his reply.
+Then it listens again.
+
+When you've finished: a gap of END_SILENCE seconds (the app's "pause before sending"
+slider). Breaths and short pauses mid-sentence don't count.
+
+Speech detector:
+    Silero VAD (ships with faster-whisper) - a small neural net that knows speech from
+    fans, breathing, clicks and music. Used whenever faster-whisper is installed.
+    Loudness - fallback if it isn't.
 
 Two mics:
     PhoneMic   the phone's own mic, streamed from its /audio.pcm (default). Needs audio
@@ -21,7 +33,7 @@ import io, queue, threading, time, wave
 from collections import deque
 
 RATE  = 16000                 # Whisper wants 16 kHz mono
-BLOCK = 480                   # 30 ms per block
+BLOCK = 512                   # 32 ms per block (what Silero wants)
 BLOCK_S = BLOCK / RATE
 
 # Things Whisper likes to "hear" in silence or noise. A whole utterance that is
@@ -86,34 +98,88 @@ def _wav_bytes(audio):
     return buf.getvalue()
 
 
+
+# ------------------------------------------------------------------ speech detectors
+
+class SileroVAD:
+    """Chance (0..1) that a block is speech. Looks at the last quarter second each time
+    so a single block has some context."""
+    name = "Silero VAD"
+
+    def __init__(self):
+        import numpy as np
+        from faster_whisper.vad import get_vad_model
+        self.np = np
+        self.model = get_vad_model()
+        self.window = np.zeros(BLOCK * 8, dtype="float32")
+        self.model(self.window)                       # fail now, not mid-sentence
+
+    def reset(self):
+        self.window[:] = 0
+
+    def __call__(self, block, level):
+        self.window = self.np.concatenate([self.window[BLOCK:], block])
+        return float(self.np.ravel(self.model(self.window))[-1])
+
+
+class EnergyVAD:
+    """Fallback: loud = speech. Learns the room's background noise so a fan or the PC
+    hum doesn't count."""
+    name = "loudness"
+
+    def __init__(self, start_ratio=3.0, min_level=0.008):
+        self.start_ratio, self.min_level = start_ratio, min_level
+        self.floor = 0.004
+        self.warmup = []                              # first half second: measure the room
+
+    def reset(self):
+        pass
+
+    def __call__(self, block, level):
+        if self.warmup is not None:
+            self.warmup.append(level)
+            if len(self.warmup) >= 15:
+                self.floor = max(1e-4, sorted(self.warmup)[len(self.warmup) // 2])
+                self.warmup = None
+            return 0.0
+        thr = max(self.min_level, self.floor * self.start_ratio)
+        if level < thr:
+            self.floor = 0.95 * self.floor + 0.05 * level
+            return 0.0 if level < thr * 0.6 else 0.4  # 0.4: quiet tail of a word
+        return 1.0
+
+
+def make_vad():
+    try:
+        return SileroVAD()
+    except Exception:
+        return EnergyVAD()
+
+
 # ------------------------------------------------------------------ utterance cutter
 
 class Segmenter:
-    """Feed it 30 ms blocks; it hands back a whole utterance once you stop talking.
-    Tracks the room's background noise so a fan or the PC hum doesn't count as speech."""
+    """Feed it blocks; it hands back the whole utterance once you've stopped talking
+    for end_silence seconds."""
 
-    def __init__(self, start_ratio=3.0, min_level=0.008, end_silence=0.8,
-                 preroll=0.3, min_speech=0.3, max_len=20.0):
-        self.start_ratio, self.min_level = start_ratio, min_level
-        self.end_blocks = int(end_silence / BLOCK_S)
+    START, KEEP = 0.5, 0.35                           # speech chance to start / to carry on
+
+    def __init__(self, vad, end_silence=1.2, preroll=0.3, min_speech=0.25, max_len=30.0):
+        self.vad = vad
+        self.end_silence = end_silence                # can be changed while running
         self.min_voiced = int(min_speech / BLOCK_S)
         self.max_blocks = int(max_len / BLOCK_S)
         self.pre = deque(maxlen=int(preroll / BLOCK_S))
-        self.floor = 0.004
-        self.warmup = []                  # first half second: just measure the room
         self.reset()
 
     def reset(self):
         self.buf, self.loud, self.quiet, self.voiced = None, 0, 0, 0
-        self.levels = []
         self.pre.clear()
+        self.vad.reset()
 
     @property
     def talking(self):
         return self.buf is not None
-
-    def threshold(self):
-        return max(self.min_level, self.floor * self.start_ratio)
 
     def feed(self, block):
         """Returns (level, utterance or None)."""
@@ -121,39 +187,24 @@ class Segmenter:
         level = float(np.sqrt(np.mean(block * block)))
         if level == 0.0 and self.buf is None:
             # exact digital silence: the phone mutes its mic while it is talking.
-            # Don't let that teach the detector the room is dead quiet.
             return level, None
-        if self.warmup is not None:
-            self.warmup.append(level)
-            if len(self.warmup) >= 15:
-                self.floor = max(1e-4, float(np.median(self.warmup)))
-                self.warmup = None
-            return level, None
-        thr = self.threshold()
+        p = self.vad(block, level)
 
         if self.buf is None:
-            if level < thr:
-                self.floor = 0.95 * self.floor + 0.05 * level    # learn the room
-                self.loud = 0
-            else:
-                self.loud += 1
             self.pre.append(block)
-            if self.loud >= 3:                                   # 90 ms of sound = speech
+            self.loud = self.loud + 1 if p >= self.START else 0
+            if self.loud >= 3:                        # ~100 ms of speech: you've started
                 self.buf, self.voiced, self.quiet = list(self.pre), self.loud, 0
             return level, None
 
         self.buf.append(block)
-        self.levels.append(level)
-        if level >= thr * 0.6:
+        if p >= self.KEEP:
             self.quiet = 0; self.voiced += 1
         else:
             self.quiet += 1
-        if self.quiet >= self.end_blocks or len(self.buf) >= self.max_blocks:
-            out = np.concatenate(self.buf) if self.voiced >= self.min_voiced else None
-            if len(self.buf) >= self.max_blocks:
-                # 20 s without a pause is usually new background noise (a fan, music),
-                # not a speech. Treat its quietest part as the new normal.
-                self.floor = max(self.floor, float(np.percentile(self.levels, 20)))
+        if self.quiet * BLOCK_S >= self.end_silence or len(self.buf) >= self.max_blocks:
+            keep = len(self.buf) - max(0, self.quiet - 10)   # trim the trailing silence
+            out = np.concatenate(self.buf[:keep]) if self.voiced >= self.min_voiced else None
             self.reset()
             return level, out
         return level, None
@@ -243,14 +294,18 @@ class Listener:
     """Owns the mic. The mic is only open while the listener is on, so Windows'
     mic-in-use icon tells the truth.
 
+    Turn-based: as soon as an utterance is cut, listening holds until release() is
+    called (the app calls it once Jarvis has finished answering). If Whisper hears
+    nothing worth sending, it releases itself.
+
     on_text(str)    something you said, already transcribed
     on_level(float) mic level 0..1, for the meter
-    on_state(str)   'listening', 'hearing you', 'transcribing', 'muted', 'off'
+    on_state(str)   'listening', 'hearing you', 'transcribing', 'waiting', 'muted', 'off'
     on_error(str)
     """
 
     def __init__(self, transcriber, on_text, on_level=None, on_state=None, on_error=None,
-                 phone=None, auth=None):
+                 phone=None, auth=None, end_silence=1.2):
         """phone: the phone's address to use its mic, or None for the PC's mic."""
         self.t = transcriber
         self.phone, self.auth = phone, auth
@@ -258,17 +313,36 @@ class Listener:
         self.on_level = on_level or (lambda v: None)
         self.on_state = on_state or (lambda s: None)
         self.on_error = on_error or (lambda e: None)
-        self.seg = Segmenter()
+        self.vad = make_vad()
+        self.seg = Segmenter(self.vad, end_silence)
         self.blocks = queue.Queue()
         self.utterances = queue.Queue()
         self.stream = None
         self.running = False
+        self.held = False                 # not listening: transcribing / Jarvis thinking
         self.mute_until = 0.0             # time.time() before which the mic is ignored,
                                           # e.g. while the phone speaks, so Jarvis
-                                          # doesn't hear himself and reply to himself
+                                          # doesn't hear himself
         self.busy = False                 # Whisper is working on something
         self._state = "off"
         threading.Thread(target=self._transcribe_loop, daemon=True).start()
+
+    @property
+    def end_silence(self):
+        return self.seg.end_silence
+
+    @end_silence.setter
+    def end_silence(self, seconds):
+        self.seg.end_silence = seconds
+
+    def hold(self):
+        """Stop listening until release()."""
+        self.held = True
+
+    def release(self, at=0.0):
+        """Listen again, from time.time() == at (now if it's in the past)."""
+        self.mute_until = max(self.mute_until, at)
+        self.held = False
 
     def _set(self, state):
         if state != self._state:
@@ -278,7 +352,10 @@ class Listener:
     def start(self):
         if self.running:
             return
-        self.seg = Segmenter()                     # re-measure the room each time
+        self.seg.reset()
+        if isinstance(self.vad, EnergyVAD):
+            self.vad = self.seg.vad = EnergyVAD()      # re-measure the room each time
+        self.held = False
         if self.phone:
             self.stream = PhoneMic(self.phone, self.auth, self._callback, self.on_error)
         else:
@@ -310,17 +387,21 @@ class Listener:
             block = self.blocks.get()
             if block is None:
                 break
-            if time.time() < self.mute_until:
-                self.seg.reset()
+            if self.held or self.busy or time.time() < self.mute_until:
+                if self.seg.talking or self.seg.pre:
+                    self.seg.reset()
                 self.on_level(0.0)
-                self._set("muted")
+                self._set("transcribing" if self.busy else "waiting" if self.held else "muted")
                 continue
             level, utt = self.seg.feed(block)
             self.on_level(min(1.0, level * 8))
             if utt is not None:
+                self.held = True                       # turn over: stop listening
+                self.busy = True
                 self.utterances.put(utt)
-            self._set("hearing you" if self.seg.talking
-                      else "transcribing" if self.busy else "listening")
+                self._set("transcribing")
+                continue
+            self._set("hearing you" if self.seg.talking else "listening")
         while not self.blocks.empty():                # drop anything left over
             self.blocks.get_nowait()
 
@@ -333,7 +414,8 @@ class Listener:
             except Exception as e:
                 self.on_error(f"transcription failed: {e}")
                 text = ""
-            finally:
-                self.busy = False
             if text and self.running:
-                self.on_text(text)
+                self.on_text(text)                     # stays held until the app releases
+            else:
+                self.held = False                      # nothing to send: listen again
+            self.busy = False
