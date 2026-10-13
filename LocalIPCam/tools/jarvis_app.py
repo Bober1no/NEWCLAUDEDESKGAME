@@ -34,7 +34,8 @@ STT_URL      = "http://127.0.0.1:8178"   # whisper-server address, for "whisperc
 STT_LANGUAGE = "en"                      # "" to auto-detect
 AUTO_SEND    = True                      # send what you said straight away (untick in the app to edit first)
 END_SILENCE  = 1.2                       # seconds of quiet before it decides you've finished (slider in the app)
-WORDS_PER_S  = 2.5                       # how fast the phone talks; used to mute the mic meanwhile
+QUIET_FOR    = 0.5                       # phone silent this long = finished talking, listen again
+WORDS_PER_S  = 2.5                       # how fast the phone talks; only a fallback if it doesn't report it
 VIEW_MAX     = 520                       # width of the "what Jarvis sees" picture
 # -------------------------------------------------------------------------
 
@@ -121,7 +122,7 @@ class App:
         self.root = root
         self.events = queue.Queue()
         self.brain = Brain(self.post)
-        self.brain.on_sentence = self._mute_while_speaking
+        self.brain.on_sentence = self._estimate_speech
         self.transcriber = stt.Transcriber(STT_ENGINE, STT_MODEL, STT_URL, STT_LANGUAGE)
         self.listener = None
         self.stt_ready = False
@@ -313,7 +314,39 @@ class App:
     def _on_idle(self):
         """Jarvis has answered everything: listen again once the phone stops talking."""
         if self.listener is not None:
-            self.listener.release(self.speak_until + 0.6)
+            self._idle_id = getattr(self, "_idle_id", 0) + 1
+            threading.Thread(target=self._release_when_quiet, args=(self._idle_id,),
+                             daemon=True).start()
+
+    def _release_when_quiet(self, my_id):
+        """Watch the phone's /status until it has nothing left to say and has stopped
+        playing, then listen again. Falls back to the word-count estimate if the phone
+        doesn't report it (old app version, talkback off, PC helper not running)."""
+        import requests
+        listener = self.listener
+        start = time.time()
+        guess = self.speak_until + 0.6
+        if not jarvis.SPEAK or guess <= start:
+            listener.release(); return
+        seen, quiet_since = False, None
+        while my_id == self._idle_id and not self.brain.busy():
+            now = time.time()
+            try:
+                st = requests.get(f"{jarvis.PHONE}/status", auth=jarvis.auth, timeout=2).json()
+                talking = st["sayQueued"] > 0 or st["talkbackPlaying"]
+            except Exception:
+                listener.release(guess); return       # can't tell: use the estimate
+            if talking:
+                seen, quiet_since = True, None
+            elif quiet_since is None:
+                quiet_since = now
+            if seen and quiet_since and now - quiet_since >= QUIET_FOR:
+                listener.release(now + 0.2); return   # 0.2 s for the room's echo to die
+            if not seen and now - start > 4:
+                listener.release(guess); return       # it never started talking
+            if now > guess + 8:
+                listener.release(); return            # something's stuck; don't go deaf
+            time.sleep(0.15)
 
     def _on_heard(self, text):
         if self.auto_send.get():
@@ -375,15 +408,13 @@ class App:
         if self.listener is not None:
             self.listener.end_silence = secs
 
-    def _mute_while_speaking(self, sentence):
-        """The phone speaks out loud in the same room as the mic. Without this,
-        Jarvis hears himself and starts replying to his own voice."""
+    def _estimate_speech(self, sentence):
+        """Rough guess of when the phone will finish talking, used only if the phone
+        doesn't report it (see _release_when_quiet)."""
         now = time.time()
         talk = len(sentence.split()) / WORDS_PER_S
         start = max(now + 0.8, self.speak_until)        # synth + upload before it starts playing
         self.speak_until = start + talk
-        if self.listener is not None:
-            self.listener.mute_until = max(self.listener.mute_until, self.speak_until + 0.6)
 
     def toggle_mic(self):
         self._set_mic(not self.mic_on)
