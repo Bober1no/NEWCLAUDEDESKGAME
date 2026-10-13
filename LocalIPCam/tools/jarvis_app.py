@@ -34,9 +34,9 @@ STT_URL      = "http://127.0.0.1:8178"   # whisper-server address, for "whisperc
 STT_LANGUAGE = "en"                      # "" to auto-detect
 AUTO_SEND    = True                      # send what you said straight away (untick in the app to edit first)
 END_SILENCE  = 1.2                       # seconds of quiet before it decides you've finished (slider in the app)
-QUIET_FOR    = 0.5                       # phone silent this long = finished talking, listen again
+QUIET_FOR    = 0.8                       # phone silent this long = finished talking, listen again
 WORDS_PER_S  = 2.5                       # how fast the phone talks; only a fallback if it doesn't report it
-VIEW_MAX     = 520                       # width of the "what Jarvis sees" picture
+VIEW_MAX     = 440                       # width of the "what Jarvis sees" picture
 # -------------------------------------------------------------------------
 
 BG, PANEL, FG, DIM = "#111316", "#1a1d22", "#e6e6e6", "#7d8590"
@@ -129,12 +129,13 @@ class App:
         self.stt_loading = False
         self.mic_on = False
         self.speak_until = 0.0
+        self.recent_replies = []
         self._photo = None
 
         root.title(f"{self.brain.name} - LocalIPCam")
         root.configure(bg=BG)
         root.geometry("1180x720")
-        root.minsize(900, 560)
+        root.minsize(1040, 600)
         self._style()
         self._build()
 
@@ -234,22 +235,27 @@ class App:
         self.meter_bar = self.meter.create_rectangle(0, 0, 0, 10, fill=OK, width=0)
         self.mic_state = ttk.Label(microw, text="off  (Ctrl+M)", style="Dim.TLabel")
         self.mic_state.pack(side="left")
-        self.auto_send = tk.BooleanVar(value=AUTO_SEND)
-        ttk.Checkbutton(microw, text="send straight away",
-                        variable=self.auto_send).pack(side="right")
+
+        # voice settings row
+        setrow = ttk.Frame(right, padding=(0, 0, 0, 8))
+        setrow.grid(row=2, column=0, sticky="ew")
+        ttk.Label(setrow, text="Send after", style="Dim.TLabel").pack(side="left")
         self.pause = tk.DoubleVar(value=END_SILENCE)
-        self.pause_lbl = ttk.Label(microw, style="Dim.TLabel", width=4)
-        self.pause_lbl.pack(side="right", padx=(0, 14))
-        tk.Scale(microw, from_=0.5, to=3.0, resolution=0.1, orient="horizontal",
-                 variable=self.pause, showvalue=False, length=110, bg=BG, fg=FG,
-                 troughcolor="#2a2f37", highlightthickness=0, bd=0, sliderrelief="flat",
-                 command=lambda _v: self._pause_changed()).pack(side="right")
-        ttk.Label(microw, text="pause before sending", style="Dim.TLabel").pack(side="right", padx=6)
+        step = dict(bg="#2a2f37", fg=FG, activebackground="#353b45", activeforeground=FG,
+                    bd=0, width=2, font=("Segoe UI", 10, "bold"), cursor="hand2")
+        tk.Button(setrow, text="-", command=lambda: self._pause_step(-0.1), **step).pack(side="left", padx=(8, 0))
+        self.pause_lbl = tk.Label(setrow, bg=BG, fg=FG, width=5, font=("Segoe UI", 10, "bold"))
+        self.pause_lbl.pack(side="left")
+        tk.Button(setrow, text="+", command=lambda: self._pause_step(+0.1), **step).pack(side="left")
+        ttk.Label(setrow, text="of silence", style="Dim.TLabel").pack(side="left", padx=8)
+        self.auto_send = tk.BooleanVar(value=AUTO_SEND)
+        ttk.Checkbutton(setrow, text="auto-send",
+                        variable=self.auto_send).pack(side="right")
         self._pause_changed()
 
         # input row
         inrow = ttk.Frame(right)
-        inrow.grid(row=2, column=0, sticky="ew")
+        inrow.grid(row=3, column=0, sticky="ew")
         inrow.columnconfigure(0, weight=1)
         self.entry = tk.Entry(inrow, bg="#2a2f37", fg=FG, insertbackground=FG, bd=0,
                               font=("Segoe UI", 11), relief="flat")
@@ -304,6 +310,7 @@ class App:
 
     def _on_caption(self, text):
         self.caption.configure(text=text)
+        self.recent_replies = (self.recent_replies + [text])[-2:]
 
     def _on_status(self, key, ok, text=None):
         dot, label = self.status[key]
@@ -348,7 +355,28 @@ class App:
                 listener.release(); return            # something's stuck; don't go deaf
             time.sleep(0.15)
 
+    def _is_own_voice(self, text):
+        """True if what Whisper heard is mostly Jarvis's own recent reply, i.e. the mic
+        caught the phone speaking."""
+        from difflib import SequenceMatcher
+        words = stt._norm(text).split()
+        if len(words) < 4:
+            return False
+        for reply in self.recent_replies:
+            said = stt._norm(reply).split()
+            m = SequenceMatcher(None, words, said, autojunk=False)
+            same = sum(blk.size for blk in m.get_matching_blocks())
+            longest = max(blk.size for blk in m.get_matching_blocks())
+            if longest >= 4 and same / len(words) >= 0.6:   # a long stretch of his words, in order
+                return True
+        return False
+
     def _on_heard(self, text):
+        if self._is_own_voice(text):
+            self._write(f"  (ignored, that was Jarvis hearing himself: \"{text}\")\n", "dim")
+            if self.listener is not None and not self.brain.busy():
+                self.listener.release()
+            return
         if self.auto_send.get():
             self.send(text, spoken=True)
         else:
@@ -402,9 +430,13 @@ class App:
         self.root.title(f"{self.brain.name} - LocalIPCam")
         self._on_sys(f"switched to {self.brain.name}, memory of this chat cleared")
 
+    def _pause_step(self, delta):
+        self.pause.set(min(3.0, max(0.5, round(self.pause.get() + delta, 1))))
+        self._pause_changed()
+
     def _pause_changed(self):
         secs = round(self.pause.get(), 1)
-        self.pause_lbl.configure(text=f"{secs:.1f}s")
+        self.pause_lbl.configure(text=f"{secs:.1f} s")
         if self.listener is not None:
             self.listener.end_silence = secs
 
@@ -475,10 +507,22 @@ class App:
             self.listener.start()
             if self.brain.busy():
                 self.listener.hold()
+            if MIC_SOURCE == "phone":
+                threading.Thread(target=self._check_phone_echo, daemon=True).start()
         except Exception as e:
             where = "the phone's mic" if MIC_SOURCE == "phone" else "the microphone"
             self._on_sys(f"couldn't open {where}: {e}")
             self._set_mic(False)
+
+    def _check_phone_echo(self):
+        import requests
+        try:
+            st = requests.get(f"{jarvis.PHONE}/status", auth=jarvis.auth, timeout=3).json()
+        except Exception:
+            return
+        if st.get("halfDuplex") is False:
+            self.post("sys", "heads up: 'Mute mic while talkback plays' is OFF in the phone app, "
+                             "so Jarvis will hear himself. Turn it on.")
 
     def _show_image(self, data):
         if Image is None:

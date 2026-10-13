@@ -899,13 +899,18 @@ Click **Mic** (or press Ctrl+M) to turn it on or off. Typing works either way. U
 It takes turns like a walkie-talkie. Once you stop talking, the mic stops listening
 while Whisper transcribes, while Jarvis thinks, and while the phone speaks his reply.
 It knows when the phone has finished talking because it watches the phone's `/status`
-(`sayQueued` and `talkbackPlaying`), and it listens again about half a second later
+(`sayQueued` and `talkbackPlaying`), and it listens again 0.8 s after the phone goes quiet
 (`QUIET_FOR` in `jarvis_app.py`). If the phone doesn't report those, it falls back to
 estimating from the word count. The status next to the meter shows what it's doing.
 
-**Pause before sending** (the slider, default 1.2 s) is how long you have to be quiet before
+If Jarvis hears himself, check that **"Mute mic while talkback plays"** is on in the phone
+app (the app warns you if it's off). Anything Whisper hears that is mostly Jarvis's own
+last reply, word for word, is ignored and logged as "(ignored, that was Jarvis hearing
+himself...)".
+
+**Pause before sending** ("Send after X s of silence", default 1.2 s, with - and + buttons) is how long you have to be quiet before
 it decides you've finished. Breaths and short pauses mid-sentence don't end your turn.
-If it cuts you off, slide it up. If it's slow to respond, slide it down. The detector
+If it cuts you off, press +. If it's slow to respond, press -. The detector
 is Silero VAD, a small neural network that comes with faster-whisper, so fans, breathing
 and clicks don't count as speech.
 
