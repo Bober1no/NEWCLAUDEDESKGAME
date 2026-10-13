@@ -1,0 +1,134 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Local IP Cam</string>
+
+    <string name="start_stream">Start streaming</string>
+    <string name="stop_stream">Stop streaming</string>
+    <string name="not_streaming">Not streaming</string>
+    <string name="idle_hint">Press start, then open the address shown here from another device on the same network.</string>
+    <string name="preview_hint">Preview appears once streaming starts</string>
+    <string name="stream_url">http://%1$s:%2$d/</string>
+    <string name="status_line">%1$d of %2$d fps · %3$d×%4$d · night %5$s · brightness %6$s · %7$d viewer(s)</string>
+
+    <string name="safety_warning">⚠ This app broadcasts THIS device\'s camera, and its microphone if you turn that on, to anyone on the same Wi-Fi/LAN. The stream is NOT encrypted. Only use it on a network you trust, only for spaces you own or have permission to record, and stop it when you\'re done. Recording people without their consent is illegal in many places, Australia included.</string>
+
+    <string name="section_image">Image</string>
+    <string name="section_exposure">Exposure</string>
+    <string name="section_night">Night mode</string>
+    <string name="section_camera">Camera</string>
+    <string name="section_audio">Audio</string>
+    <string name="section_network">Network</string>
+
+    <string name="label_fps">Frame rate</string>
+    <string name="label_quality">JPEG quality</string>
+    <string name="label_resolution">Resolution</string>
+    <string name="label_zoom">Zoom</string>
+    <string name="label_exposure_mode">Mode</string>
+    <string name="label_shutter">Shutter</string>
+    <string name="label_manual_iso">ISO</string>
+    <string name="label_night_mode">Mode</string>
+    <string name="label_night_fps">Night fps</string>
+    <string name="label_night_iso">Night ISO</string>
+    <string name="label_lens">Lens</string>
+    <string name="label_front_camera">Use front camera</string>
+    <string name="label_torch">Torch / flashlight</string>
+    <string name="label_keep_awake">Keep streaming with screen off</string>
+    <string name="label_idle_throttle">Stop encoding when nobody is watching</string>
+    <string name="label_rotation">Rotation</string>
+    <string name="label_audio">Stream the microphone</string>
+    <string name="label_talkback">Allow listeners to talk back</string>
+    <string name="label_half_duplex">Mute mic while talkback plays</string>
+    <string name="label_audio_rate">Sample rate</string>
+    <string name="label_gain">Mic gain</string>
+    <string name="label_talk_gain">Talkback gain</string>
+    <string name="label_loudspeaker">Play talkback through the loudspeaker</string>
+    <string name="label_level">Level</string>
+    <string name="label_port">Port</string>
+    <string name="label_lan_only">Local network only (recommended)</string>
+    <string name="label_auth">Require username + password</string>
+    <string name="label_username">Username</string>
+    <string name="label_password">Password</string>
+
+    <string name="fps_value">%1$d</string>
+    <string name="quality_value">%1$d</string>
+    <string name="night_fps_value">%1$d</string>
+    <string name="fps_value_placeholder">15</string>
+    <string name="quality_value_placeholder">55</string>
+    <string name="night_fps_value_placeholder">4</string>
+    <string name="night_iso_value">%1$d</string>
+    <string name="night_iso_value_placeholder">1600</string>
+
+    <string name="hint_port">8080</string>
+    <string name="hint_username">cam</string>
+    <string name="hint_password">set something</string>
+
+    <string name="night_snapshot">Night snapshot</string>
+    <string name="night_snapshot_running">Taking night snapshot — the stream pauses for a few seconds…</string>
+    <string name="night_snapshot_failed">Night snapshot failed: %1$s</string>
+    <string name="night_snapshot_title">Night snapshot</string>
+    <string name="close">Close</string>
+    <string name="sensor_line">Sensor: exposure %1$s to %2$s · ISO %3$d to %4$d · %5$s</string>
+    <string name="sensor_manual">manual control available</string>
+    <string name="sensor_auto_only">auto exposure only</string>
+    <string name="exposure_line">Exposure %1$s · ISO %2$d · battery %3$s</string>
+    <string name="battery_unknown">unknown</string>
+    <string name="battery_fmt">%1$d%%%2$s at %3$.1f°C</string>
+    <string name="battery_charging"> charging</string>
+    <string name="preview_dropped">Preview was dropped: this camera can\'t run preview, streaming and stills at once. The stream itself is unaffected.</string>
+    <string name="exposure_explainer">Auto lets the camera choose, and night mode may take over when it gets dark. Manual pins the shutter and ISO to exactly what you set and ignores night mode entirely. The slider range comes from the sensor itself, so it only ever offers exposures this camera can actually do.</string>
+    <string name="exposure_live">Camera is using %1$s at ISO %2$d (%3$s)</string>
+    <string name="mode_manual">manual</string>
+    <string name="mode_auto">auto</string>
+    <string name="manual_unsupported">This camera reports no manual sensor control, so Manual falls back to auto exposure.</string>
+    <string name="night_fps_floor">This sensor maxes out at %1$s, so night fps below %2$d gains no extra light.</string>
+    <string name="iso_value">%1$d</string>
+    <string name="shutter_placeholder">1/30s</string>
+    <string name="lens_explainer">Lenses the device actually exposes to apps. Many phones hide the ultra-wide and telephoto from everything except the stock camera app; where that happens only one entry appears here and the zoom buttons are the way across, since a logical camera switches glass by itself as the zoom ratio crosses its thresholds.</string>
+    <string name="lens_single">This device exposes only one camera to apps.</string>
+    <string name="lens_fallback">That lens would not start with the current settings, so the default camera is in use. A lower resolution may help.</string>
+    <string name="lens_zoom_range">Zoom range on this camera: %1$s to %2$s.</string>
+    <string name="lens_line">Lens %1$s at %2$s</string>
+    <string name="night_explainer">In the dark the sensor is taken off auto and driven directly: exposure is set to 1/(night fps) and gain to the ISO below, so 4 fps means a 250ms exposure. More light, more motion blur. If the camera lacks manual sensor control, auto exposure is told it may run slow instead, which is less predictable. Auto mode switches over when the scene darkens.</string>
+
+    <string name="audio_explainer">Off by default, and deliberately so. A live microphone is more intrusive than a camera, and in several Australian states recording a private conversation is a separate and stricter offence than filming one. The notification says MIC LIVE the whole time it is on. Audio is unencrypted like the video, so anyone on the network can listen.</string>
+    <string name="talkback_explainer">Talkback plays audio sent by a listener out of this phone\'s speaker. Browsers only hand a page their microphone over https or from localhost, so from a plain LAN address the browser Talk button is blocked by the browser itself — the viewer page explains the two ways round it. Sending audio with curl works regardless.</string>
+    <string name="audio_status_off">Microphone off</string>
+    <string name="gain_value">%1$.1fx</string>
+    <string name="level_value">%1$d%%%2$s</string>
+    <string name="level_clipped"> · clipped %1$d</string>
+    <string name="audio_source_line">Source: %1$s</string>
+    <string name="talk_gain_explainer">Audio sent to the phone — typed speech, or someone talking through the browser — arrives well below full scale and nothing else amplifies it. With the loudspeaker option off, playback goes to the call stream, which on most phones means the earpiece at in-call volume rather than the loudspeaker at media volume: much quieter, but it keeps the echo canceller working. Leave it on unless two-way talk starts echoing.</string>
+    <string name="gain_explainer">Phone mics are quiet in a raw stream: there is no automatic gain here like there is in a call. Set this by the level meter, not by ear — aim for peaks around 70–90%% on normal sound. The bar turns amber near the ceiling and red when samples clip, which is the signal to back it off. Turning on talkback switches the mic to the echo-cancelled capture path, which is quieter by design, so you may need more gain there.</string>
+    <string name="audio_status_on">Mic live at %1$d Hz · %2$d listening%3$s</string>
+    <string name="audio_echo_on">, echo cancel on</string>
+    <string name="audio_error">Audio problem: %1$s</string>
+    <string name="audio_permission_needed">Microphone permission is needed to stream audio.</string>
+    <string name="section_thermal">Thermal guard</string>
+    <string name="thermal_explainer">A phone streaming around the clock has no chance to cool down, and sustained heat is what actually kills a battery. Above %1$.0f°C the stream drops to 480p at %2$d fps and the torch goes off; above %3$.1f°C it stops entirely. Your settings are not changed — they are overridden while hot and restored once it falls back to %4$.0f°C. Battery temperature lags the chip by a few degrees, so by the time it reads 42°C the processor has been hotter for a while.</string>
+    <string name="thermal_status_ok">Battery %1$.1f°C — normal</string>
+    <string name="thermal_status_warm">Battery %1$.1f°C — approaching the throttle point</string>
+    <string name="thermal_status_throttled">THROTTLED at %1$.1f°C — 480p, %2$d fps</string>
+    <string name="thermal_status_unknown">Battery temperature unavailable</string>
+    <string name="thermal_last_shutdown">Last run stopped itself: %1$s</string>
+    <string name="section_power">Power</string>
+    <string name="power_explainer">An always-on camera is unwatched almost all the time. With idle throttling on, two things happen once nobody is connected: the stream drops to one frame a second, AND the sensor itself is asked to slow to the rate below. The second part is the one that matters — stopping the encoding alone saves very little, because the camera carries on capturing regardless. Both come straight back up the moment someone connects. Rotating the image is per-pixel work and at 1080p costs more than the JPEG encode; if the phone is mounted one way forever, set a fixed angle or None and that whole pass disappears.</string>
+    <string name="power_line">Draw %1$d mA now · %2$d mA average%3$s</string>
+    <string name="power_unknown">This device does not report battery current</string>
+    <string name="power_idle">  · idle, not encoding</string>
+    <string name="power_charging_note">On a charger this measures flow into the battery, not what the phone is using — unplug to compare changes.</string>
+    <string name="lan_only_explainer">With this on, the server binds only to your Wi-Fi IPv4 address and refuses anything that isn\'t a local client. Turn it off and it listens on every interface — including the public IPv6 address your ISP gives this phone, which many routers pass inbound traffic straight through to. Blocking inbound IPv6 at your router is still the real fix; this is a second layer, not a substitute for a firewall.</string>
+    <string name="lan_only_off_warning">Listening on ALL interfaces. Public addresses on this device: %1$s</string>
+    <string name="bound_to">Bound to %1$s</string>
+    <string name="start_failed">Could not start: %1$s</string>
+    <string name="network_explainer">Basic auth over plain HTTP only keeps out casual snooping on your own LAN — it is not real security, because the password is sent in cleartext. Never port-forward this to the internet. Port changes take effect the next time you start the stream.</string>
+
+    <string name="footer_note">Streams MJPEG at /stream, a still frame at /shot.jpg, and JSON state at /status. A notification stays visible the whole time the camera is running.</string>
+
+    <!-- ================= Capture rate ================= -->
+    <string name="label_idle_capture_fps">Idle capture rate</string>
+    <string name="idle_capture_fps_placeholder">2</string>
+    <string name="idle_capture_fps_value">%1$d fps</string>
+
+    <string name="idle_capture_explainer">This is the setting that actually reduces battery draw. The switch above stops the app ENCODING when nobody is connected, which turned out to save very little, because the sensor, the image processor and the link between them carried on producing full-rate frames into a bin regardless — and on a small frame that pipeline costs more than the encoding did. This number is what the sensor itself is asked to produce while unwatched. It only works if the camera advertises a frame-rate range that slow; where it does not, the app leaves the rate alone rather than requesting something the hardware never offered, since that can stop the camera opening at all.</string>
+
+</resources>

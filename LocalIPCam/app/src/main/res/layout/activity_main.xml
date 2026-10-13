@@ -1,0 +1,621 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:fillViewport="true">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="14dp">
+
+        <!-- Deliberately the first thing on screen. -->
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="#33FF9800"
+            android:padding="10dp"
+            android:text="@string/safety_warning"
+            android:textColor="#FFB74D"
+            android:textSize="12sp"
+            android:textStyle="bold" />
+
+        <FrameLayout
+            android:layout_width="match_parent"
+            android:layout_height="240dp"
+            android:layout_marginTop="12dp"
+            android:background="#000000">
+
+            <androidx.camera.view.PreviewView
+                android:id="@+id/previewView"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:visibility="invisible" />
+
+            <TextView
+                android:id="@+id/previewHint"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center"
+                android:gravity="center"
+                android:padding="16dp"
+                android:text="@string/preview_hint"
+                android:textColor="#9E9E9E"
+                android:textSize="13sp" />
+        </FrameLayout>
+
+        <TextView
+            android:id="@+id/urlText"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:gravity="center"
+            android:text="@string/not_streaming"
+            android:textSize="14sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/statusText"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:alpha="0.75"
+            android:gravity="center"
+            android:text="@string/idle_hint"
+            android:textSize="12sp" />
+
+        <TextView
+            android:id="@+id/exposureText"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="2dp"
+            android:alpha="0.75"
+            android:gravity="center"
+            android:textSize="12sp" />
+
+        <TextView
+            android:id="@+id/previewDroppedText"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="6dp"
+            android:background="#33FF9800"
+            android:padding="8dp"
+            android:text="@string/preview_dropped"
+            android:textColor="#FFB74D"
+            android:textSize="11sp"
+            android:visibility="gone" />
+
+        <Button
+            android:id="@+id/toggleButton"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:text="@string/start_stream" />
+
+        <!-- ================= Image ================= -->
+        <TextView style="@style/SectionHeader" android:text="@string/section_image" />
+
+        <LinearLayout style="@style/Row">
+            <TextView style="@style/RowLabel" android:text="@string/label_fps" />
+            <SeekBar
+                android:id="@+id/fpsBar"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1" />
+            <TextView
+                android:id="@+id/fpsLabel"
+                style="@style/RowValue"
+                android:text="@string/fps_value_placeholder" />
+        </LinearLayout>
+
+        <LinearLayout style="@style/Row">
+            <TextView style="@style/RowLabel" android:text="@string/label_quality" />
+            <SeekBar
+                android:id="@+id/qualityBar"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1" />
+            <TextView
+                android:id="@+id/qualityLabel"
+                style="@style/RowValue"
+                android:text="@string/quality_value_placeholder" />
+        </LinearLayout>
+
+        <LinearLayout style="@style/Row">
+            <TextView style="@style/RowLabel" android:text="@string/label_resolution" />
+            <Spinner
+                android:id="@+id/resolutionSpinner"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1" />
+        </LinearLayout>
+
+        <LinearLayout style="@style/Row">
+            <TextView style="@style/RowLabel" android:text="@string/label_zoom" />
+            <SeekBar
+                android:id="@+id/zoomBar"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1" />
+        </LinearLayout>
+
+        <!-- ================= Exposure ================= -->
+        <TextView style="@style/SectionHeader" android:text="@string/section_exposure" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:alpha="0.7"
+            android:paddingBottom="4dp"
+            android:text="@string/exposure_explainer"
+            android:textSize="11sp" />
+
+        <LinearLayout style="@style/Row">
+            <TextView style="@style/RowLabel" android:text="@string/label_exposure_mode" />
+            <Spinner
+                android:id="@+id/exposureModeSpinner"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1" />
+        </LinearLayout>
+
+        <TextView
+            android:id="@+id/manualUnsupportedText"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:background="#33F44336"
+            android:padding="8dp"
+            android:text="@string/manual_unsupported"
+            android:textColor="#EF9A9A"
+            android:textSize="11sp"
+            android:visibility="gone" />
+
+        <LinearLayout
+            android:id="@+id/manualExposureGroup"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:visibility="gone">
+
+            <LinearLayout style="@style/Row">
+                <TextView style="@style/RowLabel" android:text="@string/label_shutter" />
+                <SeekBar
+                    android:id="@+id/shutterBar"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1" />
+                <TextView
+                    android:id="@+id/shutterLabel"
+                    style="@style/RowValue"
+                    android:text="@string/shutter_placeholder" />
+            </LinearLayout>
+
+            <LinearLayout style="@style/Row">
+                <TextView style="@style/RowLabel" android:text="@string/label_manual_iso" />
+                <SeekBar
+                    android:id="@+id/manualIsoBar"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1" />
+                <TextView
+                    android:id="@+id/manualIsoLabel"
+                    style="@style/RowValue"
+                    android:text="@string/night_iso_value_placeholder" />
+            </LinearLayout>
+        </LinearLayout>
+
+        <TextView
+            android:id="@+id/exposureLiveText"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:alpha="0.8"
+            android:textSize="12sp" />
+
+        <!-- ================= Night mode ================= -->
+        <TextView style="@style/SectionHeader" android:text="@string/section_night" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:alpha="0.7"
+            android:paddingBottom="4dp"
+            android:text="@string/night_explainer"
+            android:textSize="11sp" />
+
+        <LinearLayout style="@style/Row">
+            <TextView style="@style/RowLabel" android:text="@string/label_night_mode" />
+            <Spinner
+                android:id="@+id/nightSpinner"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1" />
+        </LinearLayout>
+
+        <LinearLayout style="@style/Row">
+            <TextView style="@style/RowLabel" android:text="@string/label_night_fps" />
+            <SeekBar
+                android:id="@+id/nightFpsBar"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1" />
+            <TextView
+                android:id="@+id/nightFpsLabel"
+                style="@style/RowValue"
+                android:text="@string/night_fps_value_placeholder" />
+        </LinearLayout>
+
+        <LinearLayout style="@style/Row">
+            <TextView style="@style/RowLabel" android:text="@string/label_night_iso" />
+            <SeekBar
+                android:id="@+id/isoBar"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1" />
+            <TextView
+                android:id="@+id/isoLabel"
+                style="@style/RowValue"
+                android:text="@string/night_iso_value_placeholder" />
+        </LinearLayout>
+
+        <TextView
+            android:id="@+id/nightFpsHint"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:alpha="0.7"
+            android:textSize="11sp"
+            android:visibility="gone" />
+
+        <Button
+            android:id="@+id/nightShotButton"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:text="@string/night_snapshot" />
+
+        <TextView
+            android:id="@+id/sensorText"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="6dp"
+            android:alpha="0.7"
+            android:textSize="11sp" />
+
+        <!-- ================= Camera ================= -->
+        <TextView style="@style/SectionHeader" android:text="@string/section_camera" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:alpha="0.7"
+            android:paddingBottom="4dp"
+            android:text="@string/lens_explainer"
+            android:textSize="11sp" />
+
+        <LinearLayout style="@style/Row">
+            <TextView style="@style/RowLabel" android:text="@string/label_lens" />
+            <Spinner
+                android:id="@+id/lensSpinner"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1" />
+        </LinearLayout>
+
+        <HorizontalScrollView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:scrollbars="none">
+
+            <LinearLayout
+                android:id="@+id/zoomPresetRow"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal" />
+        </HorizontalScrollView>
+
+        <TextView
+            android:id="@+id/lensHint"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:alpha="0.7"
+            android:textSize="11sp" />
+
+        <androidx.appcompat.widget.SwitchCompat
+            android:id="@+id/torchSwitch"
+            style="@style/RowSwitch"
+            android:text="@string/label_torch" />
+
+        <androidx.appcompat.widget.SwitchCompat
+            android:id="@+id/awakeSwitch"
+            style="@style/RowSwitch"
+            android:text="@string/label_keep_awake" />
+
+        <!-- ================= Audio ================= -->
+        <TextView style="@style/SectionHeader" android:text="@string/section_audio" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:alpha="0.7"
+            android:paddingBottom="4dp"
+            android:text="@string/audio_explainer"
+            android:textSize="11sp" />
+
+        <androidx.appcompat.widget.SwitchCompat
+            android:id="@+id/audioSwitch"
+            style="@style/RowSwitch"
+            android:text="@string/label_audio" />
+
+        <LinearLayout style="@style/Row">
+            <TextView style="@style/RowLabel" android:text="@string/label_audio_rate" />
+            <Spinner
+                android:id="@+id/audioRateSpinner"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1" />
+        </LinearLayout>
+
+        <LinearLayout style="@style/Row">
+            <TextView style="@style/RowLabel" android:text="@string/label_gain" />
+            <SeekBar
+                android:id="@+id/gainBar"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1" />
+            <TextView
+                android:id="@+id/gainLabel"
+                style="@style/RowValue"
+                android:text="4.0x" />
+        </LinearLayout>
+
+        <LinearLayout style="@style/Row">
+            <TextView style="@style/RowLabel" android:text="@string/label_level" />
+            <ProgressBar
+                android:id="@+id/levelBar"
+                style="?android:attr/progressBarStyleHorizontal"
+                android:layout_width="0dp"
+                android:layout_height="12dp"
+                android:layout_weight="1"
+                android:max="100" />
+            <TextView
+                android:id="@+id/levelLabel"
+                style="@style/RowValue"
+                android:text="" />
+        </LinearLayout>
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:alpha="0.7"
+            android:paddingBottom="4dp"
+            android:text="@string/gain_explainer"
+            android:textSize="11sp" />
+
+        <androidx.appcompat.widget.SwitchCompat
+            android:id="@+id/talkbackSwitch"
+            style="@style/RowSwitch"
+            android:text="@string/label_talkback" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:alpha="0.7"
+            android:paddingBottom="4dp"
+            android:text="@string/talkback_explainer"
+            android:textSize="11sp" />
+
+        <LinearLayout style="@style/Row">
+            <TextView style="@style/RowLabel" android:text="@string/label_talk_gain" />
+            <SeekBar
+                android:id="@+id/talkGainBar"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1" />
+            <TextView
+                android:id="@+id/talkGainLabel"
+                style="@style/RowValue"
+                android:text="3.0x" />
+        </LinearLayout>
+
+        <androidx.appcompat.widget.SwitchCompat
+            android:id="@+id/loudspeakerSwitch"
+            style="@style/RowSwitch"
+            android:text="@string/label_loudspeaker" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:alpha="0.7"
+            android:paddingBottom="4dp"
+            android:text="@string/talk_gain_explainer"
+            android:textSize="11sp" />
+
+        <androidx.appcompat.widget.SwitchCompat
+            android:id="@+id/halfDuplexSwitch"
+            style="@style/RowSwitch"
+            android:text="@string/label_half_duplex" />
+
+        <TextView
+            android:id="@+id/audioStatusText"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:alpha="0.8"
+            android:textSize="12sp" />
+
+        <!-- ================= Power ================= -->
+        <TextView style="@style/SectionHeader" android:text="@string/section_power" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:alpha="0.7"
+            android:paddingBottom="4dp"
+            android:text="@string/power_explainer"
+            android:textSize="11sp" />
+
+        <androidx.appcompat.widget.SwitchCompat
+            android:id="@+id/idleThrottleSwitch"
+            style="@style/RowSwitch"
+            android:text="@string/label_idle_throttle" />
+
+        <LinearLayout style="@style/Row">
+            <TextView style="@style/RowLabel" android:text="@string/label_idle_capture_fps" />
+            <SeekBar
+                android:id="@+id/idleCaptureFpsSeek"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1" />
+            <TextView
+                android:id="@+id/idleCaptureFpsValue"
+                style="@style/RowValue"
+                android:text="@string/idle_capture_fps_placeholder" />
+        </LinearLayout>
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:alpha="0.7"
+            android:paddingBottom="4dp"
+            android:text="@string/idle_capture_explainer"
+            android:textSize="11sp" />
+
+        <LinearLayout style="@style/Row">
+            <TextView style="@style/RowLabel" android:text="@string/label_rotation" />
+            <Spinner
+                android:id="@+id/rotationSpinner"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1" />
+        </LinearLayout>
+
+        <TextView
+            android:id="@+id/powerText"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:padding="8dp"
+            android:background="#1A4CAF50"
+            android:textSize="12sp"
+            android:textStyle="bold" />
+
+        <!-- ================= Thermal ================= -->
+        <TextView style="@style/SectionHeader" android:text="@string/section_thermal" />
+
+        <TextView
+            android:id="@+id/thermalExplainer"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:alpha="0.7"
+            android:paddingBottom="4dp"
+            android:textSize="11sp" />
+
+        <TextView
+            android:id="@+id/thermalStatusText"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:padding="8dp"
+            android:textSize="12sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/thermalNoteText"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:background="#33FF9800"
+            android:padding="8dp"
+            android:textColor="#FFB74D"
+            android:textSize="11sp"
+            android:visibility="gone" />
+
+        <!-- ================= Network ================= -->
+        <TextView style="@style/SectionHeader" android:text="@string/section_network" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:alpha="0.7"
+            android:paddingBottom="4dp"
+            android:text="@string/network_explainer"
+            android:textSize="11sp" />
+
+        <LinearLayout style="@style/Row">
+            <TextView style="@style/RowLabel" android:text="@string/label_port" />
+            <EditText
+                android:id="@+id/portField"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:autofillHints="no"
+                android:hint="@string/hint_port"
+                android:inputType="number" />
+        </LinearLayout>
+
+        <androidx.appcompat.widget.SwitchCompat
+            android:id="@+id/lanOnlySwitch"
+            style="@style/RowSwitch"
+            android:text="@string/label_lan_only" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:alpha="0.7"
+            android:paddingBottom="6dp"
+            android:text="@string/lan_only_explainer"
+            android:textSize="11sp" />
+
+        <TextView
+            android:id="@+id/exposureWarning"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="#33F44336"
+            android:padding="8dp"
+            android:textColor="#EF9A9A"
+            android:textSize="11sp"
+            android:textStyle="bold"
+            android:visibility="gone" />
+
+        <androidx.appcompat.widget.SwitchCompat
+            android:id="@+id/authSwitch"
+            style="@style/RowSwitch"
+            android:text="@string/label_auth" />
+
+        <LinearLayout style="@style/Row">
+            <TextView style="@style/RowLabel" android:text="@string/label_username" />
+            <EditText
+                android:id="@+id/userField"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:autofillHints="username"
+                android:hint="@string/hint_username"
+                android:inputType="text" />
+        </LinearLayout>
+
+        <LinearLayout style="@style/Row">
+            <TextView style="@style/RowLabel" android:text="@string/label_password" />
+            <EditText
+                android:id="@+id/passField"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:autofillHints="password"
+                android:hint="@string/hint_password"
+                android:inputType="textVisiblePassword" />
+        </LinearLayout>
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="14dp"
+            android:layout_marginBottom="8dp"
+            android:alpha="0.6"
+            android:text="@string/footer_note"
+            android:textSize="11sp" />
+
+    </LinearLayout>
+</ScrollView>

@@ -2,3 +2,10 @@ node_modules/
 .DS_Store
 *.log
 /tmp/
+
+# LocalIPCam (Android/Gradle)
+LocalIPCam/.gradle/
+LocalIPCam/build/
+LocalIPCam/app/build/
+LocalIPCam/local.properties
+__pycache__/
