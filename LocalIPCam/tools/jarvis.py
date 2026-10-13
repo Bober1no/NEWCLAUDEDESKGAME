@@ -29,20 +29,19 @@ PHONE   = "http://10.0.0.78:8080"
 USER    = "cam"
 PASS    = "changeme"                 # whatever's set in the app
 OLLAMA  = "http://localhost:11434"
-MODEL   = "qwen3.5:4b"             # must have "vision" in `ollama show`
+MODEL   = "qwen3.5:9b"             # must have "vision" in `ollama show`
 IMG_MAX = 768                        # longest side of the snapshot sent to the model (smaller = faster)
 SPEAK   = True                       # send replies to the phone's /say
 SHOW    = True                       # pop up a window showing exactly what it looked at
-HISTORY = 6                          # how many past exchanges it remembers
+HISTORY = 4                          # how many past exchanges it remembers
 # -------------------------------------------------------------------------
 
-JARVIS = (
-    "You are Jarvis, a blunt, slightly passive-aggressive assistant that lives in a camera "
-    "in the user's room. You get a photo of the room with each message. Answer in one to "
-    "three short sentences, spoken out loud by a robotic voice, so no lists, no markdown, "
-    "no emojis. Mention specific things you can actually see in the photo. If you can't "
-    "tell something from the photo, say so instead of guessing."
-)
+JARVIS = """You are Jarvis, a dry, slightly sarcastic assistant watching the user's room through a camera.
+Reply directly to what the user just said, in one or two short sentences.
+Only mention the photo if the user asks about it or something in it is genuinely relevant.
+Never invent backstory, past events, or things you can't see.
+Don't repeat jokes or observations from earlier in the conversation.
+Spoken aloud: no lists, no markdown, no emojis."""
 
 TENANT = (
     "You are the Tenant, a calm, patient presence that lives in a camera in the corner of "
@@ -83,7 +82,7 @@ def ask_stream(messages, on_sentence):
                       json={"model": MODEL, "messages": messages, "stream": True,
                             "think": False,          # skip the hidden reasoning (the big slowdown)
                             "keep_alive": "30m",     # stay loaded between messages
-                            "options": {"temperature": 0.7, "num_ctx": 4096, "num_predict": 160}},
+                            "options": {"temperature": 0.7, "num_ctx": 4096, "num_predict": 100}},
                       stream=True, timeout=180)
     r.raise_for_status()
 

@@ -872,15 +872,36 @@ MainActivity.java      UI and controls
 
 ## Jarvis (PC-side AI)
 
-`tools/` holds everything that runs on the Windows PC:
+`tools/` holds everything that runs on the Windows PC. Keep these files in one folder.
 
-- `start-jarvis.bat` — one-click launcher. Checks Python, Ollama, the model and the
-  phone, then opens the voice window, the live view, and the chat. Edit the
-  settings block at the top (phone address, login, model, voice) first.
-  Run `start-jarvis.bat tenant` for the horror personality.
-- `jarvis.py` — grabs `/shot.jpg` from the phone, asks a local Ollama vision model
-  about it, and streams each sentence to the phone's `/say`.
-- `say-helper.ps1` — polls `/say/next`, synthesises with Windows speech, and posts
+- `start-jarvis.bat` is the one-click launcher. It checks Python, Ollama, the model and the
+  phone, installs anything missing, then opens the voice window, the live view and the
+  Jarvis app. `start-jarvis.bat tenant` runs the horror personality, and
+  `start-jarvis.bat console` runs the old type-only chat in the console window.
+- `jarvis_app.py` is the app window: the chat, what Jarvis sees, the personality switch and
+  voice input.
+- `jarvis.py` is the brain: settings, prompts, snapshots and the Ollama call. The app
+  imports it, so edits there apply to both.
+- `stt.py` is speech to text. It cuts out each thing you say and runs Whisper on it.
+- `say-helper.ps1` polls `/say/next`, synthesises the speech with Windows' voice, and posts
   the audio to `/talk` so it plays from the phone.
 
-All three must sit in the same folder.
+### Voice input
+
+Click **Mic** (or press Ctrl+M) to turn it on or off. Typing works either way. Untick
+"send what I say straight away" if you want to check or edit the text before it's sent.
+
+It uses Whisper `large-v3-turbo`. The first time you turn the mic on it downloads about
+1.6 GB. The mic is only open while it's switched on, and it pauses while the phone is
+speaking so Jarvis doesn't answer himself.
+
+There are two engines. Set the engine at the top of `jarvis_app.py`.
+
+| `STT_ENGINE` | runs on | setup |
+|---|---|---|
+| `faster-whisper` (default) | CPU | `py -m pip install faster-whisper sounddevice numpy` (the launcher does this) |
+| `whispercpp` | RX 6800 XT via Vulkan | build or download whisper.cpp with Vulkan and get `ggml-large-v3-turbo.bin`, then run `whisper-server.exe -m ggml-large-v3-turbo.bin --port 8178` |
+
+faster-whisper only uses NVIDIA cards, so on an AMD card it runs on the CPU. A short
+sentence still takes a second or two. If you want it on the GPU, use whisper.cpp, which
+supports AMD through Vulkan.

@@ -12,6 +12,7 @@ set "VOICE=Microsoft David Desktop"
 set "SPEED=0"
 rem ==========================================================
 rem Run "start-jarvis.bat tenant" for the horror personality.
+rem Run "start-jarvis.bat console" for the old type-only version in this window.
 
 echo.
 echo  ==== JARVIS ====
@@ -20,6 +21,8 @@ echo.
 rem --- 1. files that must sit next to this .bat
 if not exist "jarvis.py"        ( echo  [x] jarvis.py is missing from %~dp0 & goto :fail )
 if not exist "say-helper.ps1"   ( echo  [x] say-helper.ps1 is missing from %~dp0 & goto :fail )
+if not exist "jarvis_app.py"    ( echo  [x] jarvis_app.py is missing from %~dp0 & goto :fail )
+if not exist "stt.py"           ( echo  [x] stt.py is missing from %~dp0 & goto :fail )
 
 rem --- 2. Python + packages
 where py >nul 2>nul && (set "PY=py") || (set "PY=python")
@@ -27,6 +30,10 @@ where py >nul 2>nul && (set "PY=py") || (set "PY=python")
 %PY% -c "import requests, PIL" >nul 2>nul || (
     echo  [..] installing requests + pillow
     %PY% -m pip install --quiet requests pillow || goto :fail
+)
+%PY% -c "import faster_whisper, sounddevice, numpy" >nul 2>nul || (
+    echo  [..] installing voice input: faster-whisper + sounddevice
+    %PY% -m pip install --quiet faster-whisper sounddevice numpy || echo  [!] voice input did not install. Typing still works.
 )
 echo  [ok] python
 
@@ -66,9 +73,12 @@ rem --- 7. live camera in the browser (it will ask for the camera login)
 start "" "%JARVIS_PHONE%/"
 echo  [ok] live view in browser
 
-rem --- 8. the brain, in this window (plus the "what it sees" window)
+rem --- 8. the brain: the Jarvis app window (or the old console chat with "console")
 echo.
-if /i "%~1"=="tenant" ( %PY% jarvis.py --tenant ) else ( %PY% jarvis.py )
+set "ARGS="
+if /i "%~1"=="tenant" set "ARGS=--tenant"
+if /i "%~2"=="tenant" set "ARGS=--tenant"
+if /i "%~1"=="console" ( %PY% jarvis.py %ARGS% ) else ( %PY% jarvis_app.py %ARGS% )
 goto :eof
 
 :fail
