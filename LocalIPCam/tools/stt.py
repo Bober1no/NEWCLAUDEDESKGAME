@@ -4,6 +4,11 @@ stt.py - speech to text for jarvis_app.py. Everything local.
     mic -> 30 ms blocks -> energy detector cuts out each thing you say
         -> Whisper turns it into text -> on_text(text)
 
+Two mics:
+    PhoneMic   the phone's own mic, streamed from its /audio.pcm (default). Needs audio
+               switched on in the phone app.
+    the PC's default recording device, through sounddevice.
+
 Two engines:
     "faster-whisper"  (default) runs on the CPU, so it works on any PC and leaves the
                       GPU to Ollama.  py -m pip install faster-whisper sounddevice numpy
@@ -114,6 +119,10 @@ class Segmenter:
         """Returns (level, utterance or None)."""
         import numpy as np
         level = float(np.sqrt(np.mean(block * block)))
+        if level == 0.0 and self.buf is None:
+            # exact digital silence: the phone mutes its mic while it is talking.
+            # Don't let that teach the detector the room is dead quiet.
+            return level, None
         if self.warmup is not None:
             self.warmup.append(level)
             if len(self.warmup) >= 15:
@@ -150,6 +159,84 @@ class Segmenter:
         return level, None
 
 
+# ------------------------------------------------------------------ phone mic
+
+class PhoneMic:
+    """Reads the phone's /audio.pcm stream and hands out 30 ms blocks, like a
+    sounddevice InputStream would. Reconnects if the stream drops."""
+
+    def __init__(self, url, auth, callback, on_error):
+        self.url, self.auth, self.cb, self.on_error = url.rstrip("/"), auth, callback, on_error
+        self.on = False
+
+    def start(self):
+        import requests
+        r = requests.get(f"{self.url}/audio.pcm", auth=self.auth, stream=True, timeout=(5, 10))
+        if r.status_code == 401:
+            raise RuntimeError("the phone says wrong password")
+        if r.status_code == 503:
+            raise RuntimeError("the phone's mic is off. Turn audio on in the phone app.")
+        r.raise_for_status()
+        self.on = True
+        threading.Thread(target=self._run, args=(r,), daemon=True).start()
+
+    def _rate(self, r):
+        ctype = r.headers.get("Content-Type", "")
+        if "rate=" in ctype:
+            try:
+                return int(ctype.split("rate=")[1].split(";")[0])
+            except ValueError:
+                pass
+        return RATE
+
+    def _run(self, r):
+        import numpy as np, requests
+        warned = False
+        while self.on:
+            try:
+                rate = self._rate(r)
+                left = np.zeros(0, dtype="float32")
+                carry = b""
+                for chunk in r.iter_content(chunk_size=2048):
+                    if not self.on:
+                        break
+                    data = carry + chunk
+                    cut = len(data) - len(data) % 2
+                    data, carry = data[:cut], data[cut:]
+                    pcm = np.frombuffer(data, dtype="<i2").astype("float32") / 32768.0
+                    if rate != RATE and len(pcm):            # phone set to another rate
+                        n = int(round(len(pcm) * RATE / rate))
+                        pcm = np.interp(np.linspace(0, len(pcm) - 1, n),
+                                        np.arange(len(pcm)), pcm).astype("float32")
+                    left = np.concatenate([left, pcm])
+                    while len(left) >= BLOCK:
+                        self.cb(left[:BLOCK].reshape(-1, 1), BLOCK, None, None)
+                        left = left[BLOCK:]
+                warned = False
+            except Exception as e:
+                if self.on and not warned:
+                    self.on_error(f"lost the phone's mic ({e}), reconnecting...")
+                    warned = True
+            finally:
+                r.close()
+            while self.on:                                     # reconnect
+                try:
+                    r = requests.get(f"{self.url}/audio.pcm", auth=self.auth,
+                                     stream=True, timeout=(5, 10))
+                    if r.status_code == 200:
+                        break
+                    r.close()
+                except Exception:
+                    pass
+                time.sleep(3)
+
+    def stop(self):
+        self.on = False
+
+    def close(self):
+        pass
+
+
 # ------------------------------------------------------------------ mic listener
 
 class Listener:
@@ -162,8 +249,11 @@ class Listener:
     on_error(str)
     """
 
-    def __init__(self, transcriber, on_text, on_level=None, on_state=None, on_error=None):
+    def __init__(self, transcriber, on_text, on_level=None, on_state=None, on_error=None,
+                 phone=None, auth=None):
+        """phone: the phone's address to use its mic, or None for the PC's mic."""
         self.t = transcriber
+        self.phone, self.auth = phone, auth
         self.on_text = on_text
         self.on_level = on_level or (lambda v: None)
         self.on_state = on_state or (lambda s: None)
@@ -188,12 +278,15 @@ class Listener:
     def start(self):
         if self.running:
             return
-        import sounddevice as sd
-        self.seg.reset()
-        self.running = True
-        self.stream = sd.InputStream(samplerate=RATE, channels=1, dtype="float32",
-                                     blocksize=BLOCK, callback=self._callback)
+        self.seg = Segmenter()                     # re-measure the room each time
+        if self.phone:
+            self.stream = PhoneMic(self.phone, self.auth, self._callback, self.on_error)
+        else:
+            import sounddevice as sd
+            self.stream = sd.InputStream(samplerate=RATE, channels=1, dtype="float32",
+                                         blocksize=BLOCK, callback=self._callback)
         self.stream.start()
+        self.running = True
         threading.Thread(target=self._segment_loop, daemon=True).start()
         self._set("listening")
 

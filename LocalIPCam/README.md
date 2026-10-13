@@ -888,11 +888,16 @@ MainActivity.java      UI and controls
 
 ### Voice input
 
+By default it listens through **the phone's mic**, streamed from `/audio.pcm`, so
+**audio has to be switched on in the phone app**. To use the PC's mic instead, set
+`MIC_SOURCE = "pc"` at the top of `jarvis_app.py`. The phone mutes its own mic while it's
+speaking, which also stops Jarvis hearing himself.
+
 Click **Mic** (or press Ctrl+M) to turn it on or off. Typing works either way. Untick
 "send what I say straight away" if you want to check or edit the text before it's sent.
 
 It uses Whisper `large-v3-turbo`. The first time you turn the mic on it downloads about
-1.6 GB. The mic is only open while it's switched on, and it pauses while the phone is
+1.6 GB. The mic stream is only open while it's switched on, and it pauses while the phone is
 speaking so Jarvis doesn't answer himself.
 
 There are two engines. Set the engine at the top of `jarvis_app.py`.

@@ -27,6 +27,7 @@ except ImportError:
     Image = ImageTk = None
 
 # ------------------------------------------------------------------ config
+MIC_SOURCE   = "phone"                   # "phone" = the phone's mic (turn audio on in the app), "pc" = this PC's mic
 STT_ENGINE   = "faster-whisper"          # or "whispercpp" to use whisper-server.exe on the GPU
 STT_MODEL    = "large-v3-turbo"          # faster-whisper model. Lighter: "distil-large-v3", "small.en"
 STT_URL      = "http://127.0.0.1:8178"   # whisper-server address, for "whispercpp"
@@ -380,8 +381,9 @@ class App:
 
     def _load_stt(self):
         try:
-            import sounddevice  # noqa: F401
             import numpy        # noqa: F401
+            if MIC_SOURCE == "pc":
+                import sounddevice  # noqa: F401
         except ImportError:
             self.post("stt_loaded", False,
                       "voice input needs: py -m pip install faster-whisper sounddevice numpy")
@@ -404,12 +406,14 @@ class App:
                 on_text=lambda t: self.post("heard", t),
                 on_level=lambda v: self.post("level", v),
                 on_state=lambda s: self.post("micstate", s),
-                on_error=lambda e: self.post("sys", e))
+                on_error=lambda e: self.post("sys", e),
+                phone=jarvis.PHONE if MIC_SOURCE == "phone" else None, auth=jarvis.auth)
         self.listener.mute_until = max(self.listener.mute_until, self.speak_until + 0.6)
         try:
             self.listener.start()
         except Exception as e:
-            self._on_sys(f"couldn't open the microphone: {e}")
+            where = "the phone's mic" if MIC_SOURCE == "phone" else "the microphone"
+            self._on_sys(f"couldn't open {where}: {e}")
             self._set_mic(False)
 
     def _show_image(self, data):
