@@ -128,7 +128,8 @@ export function initMaterials() {
   M.whitePlastic = new THREE.MeshPhysicalMaterial({ color: 0xe9ebec, roughness: 0.42, clearcoat: 0.2, normalMap: TX.castN, normalScale: new THREE.Vector2(0.05, 0.05) });
   M.blackPlastic = new THREE.MeshPhysicalMaterial({ color: 0x17181a, roughness: 0.5, clearcoat: 0.15, normalMap: TX.castN, normalScale: new THREE.Vector2(0.08, 0.08) });
   M.heatMat = new THREE.MeshStandardMaterial({ map: colourMap(256, 256, (u, v, c) => { const k = 0.62 + 0.15 * fbm(u * 20, v * 20, 4, 20, 77); c[0] = k; c[1] = k * 0.97; c[2] = k * 0.92; }), roughness: 0.95, normalMap: TX.grainN, normalScale: new THREE.Vector2(0.6, 0.6) });
-  M.marble = new THREE.MeshPhysicalMaterial({ map: TX.marbleC, roughness: 0.55, transmission: 0.1, thickness: 0.006, normalMap: TX.grainN, normalScale: new THREE.Vector2(0.5, 0.5), envMapIntensity: 0.7 });
+  // marble stays opaque so liquids (which refract only opaque objects) can show it; sheen gives the translucent edge
+  M.marble = new THREE.MeshPhysicalMaterial({ map: TX.marbleC, color: 0xf4f2ee, roughness: 0.5, sheen: 0.6, sheenColor: new THREE.Color(0xfff6ea), sheenRoughness: 0.5, clearcoat: 0.15, normalMap: TX.grainN, normalScale: new THREE.Vector2(0.5, 0.5), envMapIntensity: 0.8 });
   M.zincCarb = new THREE.MeshStandardMaterial({ color: 0xece9e1, roughness: 0.95, normalMap: TX.grainN, normalScale: new THREE.Vector2(1.2, 1.2) });
   M.cuOxide = new THREE.MeshPhysicalMaterial({ color: 0x111111, roughness: 0.6, metalness: 0.3, normalMap: TX.grainN, normalScale: new THREE.Vector2(1.4, 1.4), clearcoat: 0.3, clearcoatRoughness: 0.2 });
   M.cuCarb = new THREE.MeshStandardMaterial({ color: 0x4f9a76, roughness: 0.95, normalMap: TX.grainN, normalScale: new THREE.Vector2(1.2, 1.2) });

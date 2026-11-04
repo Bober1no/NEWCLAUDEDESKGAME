@@ -75,7 +75,7 @@ const BUILD = {
       el.querySelector('.lb').textContent = d.title;
       g.clearRect(0, 0, 300, 160); const X = 34, Y = 140, W = 255, H = 118;
       g.strokeStyle = 'rgba(255,255,255,.5)'; g.lineWidth = 1; g.beginPath(); g.moveTo(X, Y - H); g.lineTo(X, Y); g.lineTo(X + W, Y); g.stroke();
-      g.fillStyle = '#9AA6B6'; g.font = '600 9px JetBrains Mono, monospace'; g.fillText('time (s)', X + W - 44, Y + 13); g.save(); g.translate(10, Y - 20); g.rotate(-Math.PI / 2); g.fillText('CO₂ / gas (cm³)', 0, 0); g.restore();
+      g.fillStyle = '#9AA6B6'; g.font = '600 9px JetBrains Mono, monospace'; g.fillText('time (s)', X + W / 2 - 20, Y + 13); g.save(); g.translate(10, Y - 20); g.rotate(-Math.PI / 2); g.fillText('CO₂ / gas (cm³)', 0, 0); g.restore();
       g.fillText('0', X - 9, Y + 3); g.fillText('60', X - 17, Y - H + 6); g.fillText(String(d.tmax), X + W - 16, Y + 13);
       d.curves.forEach((cv, ci) => {
         g.strokeStyle = cv.col; g.lineWidth = 2.2; g.beginPath(); const n = Math.max(2, Math.floor(80 * Math.max(0, d.prog)));
@@ -97,7 +97,7 @@ const BUILD = {
     return d => {
       g.clearRect(0, 0, 300, 170); const X = 34, Y = 145, W = 255, H = 125, tm = 300, mm = 0.5;
       g.strokeStyle = 'rgba(255,255,255,.5)'; g.lineWidth = 1; g.beginPath(); g.moveTo(X, Y - H); g.lineTo(X, Y); g.lineTo(X + W, Y); g.stroke();
-      g.fillStyle = '#9AA6B6'; g.font = '600 9px JetBrains Mono, monospace'; g.fillText('time (s)', X + W - 44, Y + 13); g.fillText('0.50', 4, Y - H + 4); g.fillText('0', X - 9, Y + 3); g.fillText('300', X + W - 18, Y + 13);
+      g.fillStyle = '#9AA6B6'; g.font = '600 9px JetBrains Mono, monospace'; g.fillText('time (s)', X + W / 2 - 20, Y + 13); g.fillText('0.50', 4, Y - H + 4); g.fillText('0', X - 9, Y + 3); g.fillText('300', X + W - 18, Y + 13);
       const px = x => X + x / tm * W, py = m => Y - m / mm * H;
       const series = [['powder', '#33D17A'], ['chips', '#FFE14D']];
       for (const [k, col] of series) {

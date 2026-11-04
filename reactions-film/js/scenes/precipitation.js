@@ -46,7 +46,7 @@ export default function (K) {
   const rows = RULES.map((r, i) => {
     const t = canvasTex(1024, 128, g => { g.clearRect(0, 0, 1024, 128); g.fillStyle = 'rgba(94,231,255,0.10)'; g.fillRect(0, 0, 1024, 128); g.strokeStyle = 'rgba(94,231,255,0.8)'; g.lineWidth = 4; g.strokeRect(2, 2, 1020, 124);
       g.fillStyle = '#e8fbff'; g.font = 'bold 46px JetBrains Mono, monospace'; g.fillText(r.label, 26, 58); g.font = '36px JetBrains Mono, monospace'; g.fillStyle = /insol/i.test(r.rule) ? '#FFB23F' : '#33D17A'; g.fillText(r.rule + (r.except.length ? '  except ' + r.except.map(x => x.replace(/\^.*$/, '')).join(', ') : ''), 26, 106); });
-    const m = new THREE.Mesh(new THREE.PlaneGeometry(0.3, 0.0375), new THREE.MeshBasicMaterial({ map: t, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, color: new THREE.Color(1.6, 1.6, 1.6) }));
+    const m = new THREE.Mesh(new THREE.PlaneGeometry(0.3, 0.0375), new THREE.MeshBasicMaterial({ map: t, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, color: new THREE.Color(0.9, 0.9, 0.9) }));
     m.position.set(0, 0.11 - i * 0.042, 0); holo.add(m); return m;
   });
   const glow = new THREE.Mesh(new THREE.PlaneGeometry(0.34, 0.28), new THREE.MeshBasicMaterial({ color: new THREE.Color(0.05, 0.25, 0.35), transparent: true, opacity: 0.35, blending: THREE.AdditiveBlending, depthWrite: false })); glow.position.set(0, 0.0, -0.002); holo.add(glow);
@@ -57,20 +57,20 @@ export default function (K) {
 
   // ---------------- particles: Pb2+ and I- lock into a lattice that sinks
   const W = new MolWorld(K.pipe); G.particles.add(W.group);
-  const pb = Array.from({ length: 8 }, () => W.atom('Pb', '2+')), io = Array.from({ length: 16 }, () => W.atom('I', '−'));
-  const kk = Array.from({ length: 6 }, () => W.atom('K', '+')), no3 = Array.from({ length: 6 }, () => W.atom('N', '−'));
+  const pb = Array.from({ length: 8 }, (_, i) => W.atom('Pb', i < 2 ? '2+' : '')), io = Array.from({ length: 16 }, (_, i) => W.atom('I', i < 3 ? '−' : ''));
+  const kk = Array.from({ length: 6 }, (_, i) => W.atom('K', i < 2 ? '+' : '')), no3 = Array.from({ length: 6 }, (_, i) => W.atom('N', i < 2 ? '−' : ''));
 
   const KEYS = [
     { s: 0, p: [0.26, 0.2, 0.42], l: [0, 0.06, 0], f: 40, ap: 0.015 },
-    { s: 6, cut: true, p: [0.1, 0.09, 0.16], l: [0, 0.05, 0], f: 85, ap: 0.06 },
-    { s: 11, p: [0.07, 0.06, 0.13], l: [0, 0.035, 0], f: 100, ap: 0.08 },
-    { s: 16, cut: true, p: [0.16, 0.14, 0.3], l: [0, 0.07, 0], f: 60, ap: 0.03 },
-    { s: 22, p: [0.1, 0.1, 0.22], l: [0, 0.05, 0], f: 85, ap: 0.05 },
-    { s: 28, cut: true, p: [0.0, 0.32, 0.26], l: [0, 0.07, -0.05], f: 40, ap: 0.01 },
-    { s: 35, p: [0.05, 0.22, 0.2], l: [0, 0.03, -0.05], f: 40, ap: 0.01 },
+    { s: 6, cut: true, p: [0.16, 0.12, 0.26], l: [0, 0.05, 0], f: 85, ap: 0.05 },
+    { s: 11, p: [0.12, 0.09, 0.22], l: [0, 0.04, 0], f: 85, ap: 0.05 },
+    { s: 16, cut: true, p: [0.18, 0.2, 0.34], l: [0, 0.1, 0], f: 50, ap: 0.025 },
+    { s: 22, p: [0.12, 0.16, 0.26], l: [0, 0.1, 0], f: 70, ap: 0.04 },
+    { s: 28, cut: true, p: [0.0, 0.42, 0.36], l: [0, 0.07, -0.05], f: 40, ap: 0.01 },
+    { s: 35, p: [0.06, 0.32, 0.3], l: [0, 0.05, -0.05], f: 40, ap: 0.01 },
     { s: 41, cut: true, p: [0.1, 0.1, 0.3], l: [0.01, 0.04, 0.12], f: 85, ap: 0.05 },
-    { s: 46, cut: true, p: [0, 0.02, 0.26], l: [0, 0, 0], f: 50, ap: 0.03 },
-    { s: 52.5, p: [0.06, 0.0, 0.24], l: [0, -0.01, 0], f: 50, ap: 0.03 }
+    { s: 46, cut: true, p: [0, 0.03, 0.36], l: [0, 0, 0], f: 50, ap: 0.025 },
+    { s: 52.5, p: [0.08, 0.0, 0.34], l: [0, -0.02, 0], f: 50, ap: 0.025 }
   ];
 
   return {
@@ -92,7 +92,7 @@ export default function (K) {
         holo.visible = s < 41.5; p1.g.visible = p2.g.visible = s > 40;
         const tip = sm(41.6, 42.3, s) * (1 - sm(43.6, 44.2, s)); p2.g.position.set(lerp(0.05, 0.02, tip), lerp(0, 0.075, tip), 0.12); p2.g.rotation.z = lerp(0, 2.1, tip);
         pp2.update(s, time); st2.update(s, time);
-        post.bloom = { threshold: 1.4, strength: 0.6, radius: 0.6 };
+        post.bloom = { threshold: 2.5, strength: 0.4, radius: 0.5 };
       }
       if (G.particles.visible) {
         world = 'micro';

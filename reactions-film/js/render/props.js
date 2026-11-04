@@ -103,7 +103,7 @@ export function beaker({ r = 0.034, h = 0.088, wall = 0.0017, ml = 250, step = 2
   }
   geo.computeVertexNormals();
   const g = new THREE.Group();
-  g.add(glassMesh(geo)); g.add(gradBand(r + 0.0004, 0.012, h * 0.82, ml + ' mL', ml * 0.8, step));
+  g.add(glassMesh(geo)); const band = gradBand(r + 0.0004, 0.012, h * 0.82, ml + ' mL', ml * 0.8, step); band.rotation.y = -1.05; g.add(band);
   g.userData = { inner: P.inner, floor: P.floor, top: h, r };
   return g;
 }
