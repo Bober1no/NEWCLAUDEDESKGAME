@@ -85,6 +85,6 @@ export class Fireball {
     if (!on) { this.light.intensity = 0; return; }
     const r = scale * (1 - Math.exp(-age * 7));
     this.mesh.scale.setScalar(Math.max(0.001, r)); this.mat.uniforms.uAge.value = age;
-    this.light.intensity = 10 * Math.exp(-age * 5); this.light.color.setRGB(1, 0.75, 0.45);
+    this.light.intensity = 0.9 * Math.exp(-age * 5); this.light.color.setRGB(1, 0.75, 0.45);
   }
 }

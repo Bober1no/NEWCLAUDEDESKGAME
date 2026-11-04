@@ -106,7 +106,7 @@ export default function (K) {
         rib.scale.x = Math.max(0.02, 1 - burnt * 0.9); rib.position.x = 0.035 + 0.0275 * burnt * 0.9; rib.visible = burnt < 0.98;
         const fl = burning ? (0.75 + 0.25 * Math.sin(time * 37) * Math.sin(time * 13)) : 0;
         core.visible = burning; core.scale.setScalar(0.0018 + 0.0012 * fl); const bx = 0.035 + 0.055 * (1 - (1 - burnt * 0.9)) ; core.position.set(lerp(0.062, 0.012, burnt), 0.04 - burnt * 0.012, 0);
-        mgLight.position.copy(core.position); mgLight.intensity = burning ? 18 * fl : 0;
+        mgLight.position.copy(core.position); mgLight.intensity = burning ? 0.6 * fl : 0;
         ash.visible = burnt > 0.3; ash.scale.set(1.2 * burnt, 0.35 * burnt + 0.01, 0.8 * burnt);
         sparkFx.points.position.set(core.position.x - burnPt.x, core.position.y - burnPt.y, 0); sparkFx.update(s, time); smoke.update(s, time);
         post.exposure = burning ? lerp(1, 0.45, sm(0, 0.6, a)) * (1 - 0.05 * Math.sin(time * 23)) : 1;

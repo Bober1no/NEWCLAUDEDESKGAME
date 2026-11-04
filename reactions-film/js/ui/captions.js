@@ -65,6 +65,11 @@ export class Captions {
       const o = Math.min(fi, fo);
       const q = Math.round(o * 1000) / 1000;
       if (q !== it.last) { el.style.setProperty('--o', q); el.style.visibility = q <= 0 ? 'hidden' : 'visible'; it.last = q; }
+      if (q > 0 && it.h1 !== null) { // keep big titles inside the frame (fonts may load late; letter-spacing animates)
+        const h = it.h1 || (it.h1 = el.querySelector('h1'));
+        if (h) { const avail = this.root.clientWidth - 8, w = h.scrollWidth; const k = w > avail && w > 0 ? (avail / w).toFixed(4) : '1'; if (h.dataset.k !== k) { h.dataset.k = k; h.style.transform = k === '1' ? 'none' : `scale(${k})`; } }
+        else it.h1 = null;
+      }
       if (it.lines) it.lines.forEach((ln, i) => { const on = s >= b.lines[i].at; if (ln.classList.contains('on') !== on) ln.classList.toggle('on', on); });
       if (it.letters) it.letters.forEach((sp, i) => { const t0 = b.a + 0.2 + i * 0.11; sp.style.setProperty('--lo', sm(t0, t0 + 0.32, s).toFixed(3)); });
     }

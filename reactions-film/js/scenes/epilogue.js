@@ -29,7 +29,7 @@ export default function (K) {
   const bench = new THREE.Mesh(new THREE.BoxGeometry(9, 0.04, 1.0), M.bench); bench.position.set(2.0, -0.02, 0); bench.receiveShadow = true; root.add(bench);
   const back = new THREE.Mesh(new THREE.PlaneGeometry(14, 4), new THREE.MeshStandardMaterial({ color: 0x0b0e13, roughness: 0.9 })); back.position.set(2, 1.5, -1.2); root.add(back);
   const keyL = new THREE.SpotLight(0xfff1e2, 30, 0, 0.6, 1, 2); keyL.castShadow = true; keyL.shadow.bias = -0.0002; keyL.shadow.normalBias = 0.002; root.add(keyL, keyL.target); K.pipe.lights.push(keyL);
-  const fillL = new THREE.PointLight(0x7fb0ff, 3, 3, 2); root.add(fillL);
+  const fillL = new THREE.PointLight(0x7fb0ff, 0.8, 3, 2); root.add(fillL);
 
   // S0/S1: Bunsen + boiling tube + limewater + lever
   const bun = bunsenRig(); root.add(bun.group);

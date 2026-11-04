@@ -49,11 +49,11 @@ if (want('nan')) {
   console.log('nan');
   const { page, log } = await open(b, { viewport: small, quality: 'HIGH', fonts: false });
   const ids = await page.evaluate(() => window.__film.secs.filter(s => s.kind === 'ch').map(s => [s.id, s.sec.base]));
-  for (const [id, base] of ids) for (const t of [0.1, 0.5, 0.9]) {
+  for (const [id, base] of ids) for (const t of [0.1, 0.3, 0.5, 0.7, 0.9]) {
     await at(page, id, t * base, 1);
     const r = await page.evaluate(() => window.__film.stage().probes.sample());
     ok(r.nan === 0, `${id}@${t}: zero NaN/Inf`, r);
-    ok(r.mean > 0.004 && r.mean < 4, `${id}@${t}: mean luminance sane`, r);
+    ok(r.mean > 0.004 && r.mean < 1.6, `${id}@${t}: mean luminance sane (not black, not blown out)`, r);
   }
   await at(page, 'r5', 30, 1);
   const lit = await page.evaluate(() => window.__film.stage().probes.sample(false)), dark = await page.evaluate(() => window.__film.stage().probes.sample(true));

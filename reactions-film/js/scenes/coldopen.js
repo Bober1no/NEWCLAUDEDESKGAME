@@ -114,7 +114,7 @@ export default function (K) {
           it.m.rotation.y = Math.sin(time * 0.4 + i) * 0.04;
           it.e.material.opacity = 0.25 * Math.exp(-Math.pow((s - 13 - i * 0.12) / 0.35, 2)) + 0.04;
         });
-        sweep.position.set(lerp(-0.6, 0.6, sm(12.6, 15.5, s)), 0.15, 0.25); sweep.intensity = 2.5;
+        sweep.position.set(lerp(-0.6, 0.6, sm(12.6, 15.5, s)), 0.15, 0.25); sweep.intensity = 0.35;
         post.bloom = { threshold: 1.2, strength: 0.9, radius: 0.7 }; post.exposure = 1.1;
       }
       const cam = shake(camKF(s, KEYS), time, s < 11 ? 0.0003 : 0, motion);

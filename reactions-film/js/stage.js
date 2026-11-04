@@ -89,7 +89,7 @@ export async function createStage(canvas, { phone = false, onProgress = () => {}
     if (F.bottles) { lab.bottles.indicator.position.set(F.bottles[0], 0, F.bottles[1]); lab.bottles.phenol.position.set(F.bottles[0] + 0.05, 0, F.bottles[1] - 0.05); }
     if (micro.visible) micro.userData.update(time);
     if (lab.group.visible) lab.update(time);
-    lab.warm.intensity = F.warm ? F.warm.i : 0; if (F.warm) lab.warm.position.set(...F.warm.p);
+    lab.warm.intensity = F.warm ? F.warm.i * 0.2 : 0; if (F.warm) lab.warm.position.set(...F.warm.p);
     // framing correction: the authored shots were too tight. Pull back and widen (lab/void more than micro).
     const pull = F.pull ?? (world === 'micro' ? 1.25 : 1.45), widen = F.pull === 1 ? 1 : world === 'micro' ? 0.92 : 0.8;
     const c0 = F.cam, L = c0.l;

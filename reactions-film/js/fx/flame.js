@@ -62,7 +62,7 @@ export class Flame {
     this.outerY.material.uniforms.uK.value = on; this.inner.material.uniforms.uK.value = on;
     const fl = 0.85 + 0.15 * Math.sin(time * 17.0) * Math.sin(time * 5.3 + 1.0) * (1 - air * 0.8);
     this.light.color.setRGB(1, 0.62, 0.25).lerp(new THREE.Color(0.45, 0.6, 1), air);
-    this.light.intensity = on * (0.9 - 0.55 * air) * fl * 3.0;
+    this.light.intensity = on * (0.07 - 0.04 * air) * fl; // candela, calibrated against the lab key light
     this.light.position.y = H * 0.5;
   }
 }
