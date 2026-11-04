@@ -106,7 +106,7 @@ export async function createStage(canvas, { phone = false, onProgress = () => {}
 
   // ------------------------------------------------ test probes (used by the Playwright harness only)
   const probes = {
-    info: () => ({ calls: renderer.info.render.calls, triangles: renderer.info.render.triangles, textures: renderer.info.memory.textures, geometries: renderer.info.memory.geometries }),
+    info() { renderer.info.autoReset = false; renderer.info.reset(); pipe.render(lastF ? lastF.glass !== false : true); const r = { calls: renderer.info.render.calls, triangles: renderer.info.render.triangles, textures: renderer.info.memory.textures, geometries: renderer.info.memory.geometries }; renderer.info.autoReset = true; return r; },
     framebuffers() {
       const g = renderer.getContext(); const out = [];
       const check = (rt, name) => { if (!rt) return; renderer.setRenderTarget(rt); out.push({ name, ok: g.checkFramebufferStatus(g.FRAMEBUFFER) === g.FRAMEBUFFER_COMPLETE }); };

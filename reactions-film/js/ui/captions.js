@@ -52,9 +52,8 @@ export class Captions {
     for (const it of this.items) {
       const h = it.el.querySelector('h1');
       if (!h) continue;
-      h.style.transform = 'none';
       const avail = this.root.clientWidth - 8, w = h.scrollWidth;
-      if (w > avail && w > 0) h.style.transform = `scale(${(avail / w).toFixed(4)})`;
+      h.style.transform = `translateX(-50%) scale(${w > avail && w > 0 ? (avail / w).toFixed(4) : 1})`; h.dataset.k = '';
     }
   }
   update(s, base) {
@@ -67,7 +66,7 @@ export class Captions {
       if (q !== it.last) { el.style.setProperty('--o', q); el.style.visibility = q <= 0 ? 'hidden' : 'visible'; it.last = q; }
       if (q > 0 && it.h1 !== null) { // keep big titles inside the frame (fonts may load late; letter-spacing animates)
         const h = it.h1 || (it.h1 = el.querySelector('h1'));
-        if (h) { const avail = this.root.clientWidth - 8, w = h.scrollWidth; const k = w > avail && w > 0 ? (avail / w).toFixed(4) : '1'; if (h.dataset.k !== k) { h.dataset.k = k; h.style.transform = k === '1' ? 'none' : `scale(${k})`; } }
+        if (h) { const avail = this.root.clientWidth - 8, w = h.scrollWidth; const k = w > avail && w > 0 ? (avail / w).toFixed(4) : '1'; if (h.dataset.k !== k) { h.dataset.k = k; h.style.transform = `translateX(-50%) scale(${k})`; } }
         else it.h1 = null;
       }
       if (it.lines) it.lines.forEach((ln, i) => { const on = s >= b.lines[i].at; if (ln.classList.contains('on') !== on) ln.classList.toggle('on', on); });

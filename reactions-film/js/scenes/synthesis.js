@@ -48,7 +48,7 @@ export default function (K) {
   const mgLight = new THREE.PointLight(0xf4f6ff, 0, 3, 2); G.mg.add(mgLight);
   const burnPt = new THREE.Vector3(0.06, 0.039, 0);
   const sparkFx = sparks(K.pipe, { n: 220, origin: burnPt.toArray(), active: s => (s > MG_IGN && s < MG_IGN + 6) ? 1 : 0, speed: 0.45, life: 0.6, col: [4, 3.8, 3.4] }); G.mg.add(sparkFx.points);
-  const smoke = plume(K.pipe, { n: 260, origin: burnPt.toArray(), density: s => (s > MG_IGN + 0.3 && s < MG_IGN + 6.5) ? 1 : 0, col: [0.95, 0.95, 0.95], alpha: 0.16, size: 0.03, rise: 0.09, spread: 0.035, life: 4, grow: 4 }); G.mg.add(smoke.points);
+  const smoke = plume(K.pipe, { n: 260, origin: burnPt.toArray(), density: s => (s > MG_IGN + 0.3 && s < MG_IGN + 6.5) ? 1 : 0, col: [0.9, 0.9, 0.9], alpha: 0.07, size: 0.018, rise: 0.09, spread: 0.035, life: 4, grow: 3 }); G.mg.add(smoke.points);
 
   const KEYS = [
     { s: 0, p: [0.55, 0.42, 0.95], l: [-0.02, 0.33, 0], f: 35, ap: 0.01 },
@@ -110,7 +110,7 @@ export default function (K) {
         ash.visible = burnt > 0.3; ash.scale.set(1.2 * burnt, 0.35 * burnt + 0.01, 0.8 * burnt);
         sparkFx.points.position.set(core.position.x - burnPt.x, core.position.y - burnPt.y, 0); sparkFx.update(s, time); smoke.update(s, time);
         post.exposure = burning ? lerp(1, 0.45, sm(0, 0.6, a)) * (1 - 0.05 * Math.sin(time * 23)) : 1;
-        post.bloom = { threshold: 1.5, strength: burning ? 1.1 : 0.5, radius: 0.7 };
+        post.bloom = { threshold: 2.5, strength: burning ? 0.7 : 0.45, radius: 0.6 };
         warm = { i: 0.4, p: [0.12, 0.2, -0.04] }; void bx;
       }
       const cam = shake(camKF(s, KEYS), time, world === 'lab' ? 0.0005 : 0, motion);

@@ -126,6 +126,8 @@ sub { bottom: -.28em; } sup { top: -.5em; }
 .beat.endtitle { left: 0; right: 0; bottom: 6%; text-align: center; }
 .beat.endtitle .kick { font: 700 12px/1 var(--mono); color: var(--cyan); letter-spacing: .3em; text-transform: uppercase; }
 .beat.endtitle h1 { margin: .12em 0; font: 900 clamp(40px, 9vw, 112px)/.95 var(--disp); font-stretch: 125%; letter-spacing: .04em; text-shadow: 0 0 40px rgba(94, 231, 255, .35), 0 4px 30px #000; white-space: nowrap; display: inline-block; transform-origin: 50% 50%; }
+/* big titles: centred by geometry, so they stay centred even when scaled down to fit */
+.beat.title h1, .beat.endtitle h1 { display: block; width: max-content; position: relative; left: 50%; transform: translateX(-50%); }
 .beat.endtitle .log { font: italic 400 clamp(14px, 1.8vw, 19px)/1.35 var(--body); color: #dbe2ea; }
 
 /* ---------------- HUD panels */
@@ -280,7 +282,8 @@ input.num { width: 140px; font-family: var(--mono); }
   .beat.eq .ln .chem { white-space: normal; }
   .beat.key { top: 24%; }
   .beat.say { top: 14%; }
-  .hp { top: auto; bottom: 46%; width: min(220px, 56vw); font-size: 11px; }
+  .hp { top: auto; bottom: 150px; width: min(210px, 54vw); font-size: 11px; padding: 7px 9px; }
+  .hp.wide { width: min(260px, 70vw); }
   .hp.index { top: 8px; bottom: auto; }
   .match { grid-template-columns: 1fr 1fr; }
   .edrag { grid-template-columns: 1fr; }
