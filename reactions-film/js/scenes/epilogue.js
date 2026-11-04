@@ -164,7 +164,7 @@ export default function (K) {
       const cam = shake(camT, time, 0.0005, motion);
       if (motion && s > T.converge && s < T.nova + 0.6) { const k = sm(T.converge, T.nova, s) * 0.006 * (s < T.nova ? 1 : 1 - (s - T.nova) / 0.6); cam.p = [cam.p[0] + Math.sin(time * 47) * k, cam.p[1] + Math.cos(time * 41) * k, cam.p[2]]; }
       if (s > T.reveal) { const o = (s - T.reveal) * 0.06; cam.p = [cam.p[0] + Math.sin(time * 0.15) * o * 0.3, cam.p[1], cam.p[2]]; }
-      return { cam, world: 'void', post, glass: true, warm: { i: 0.2, p: [bun.top.x, 0.2, 0] } };
+      return { cam, world: 'void', post, glass: true, warm: { i: 0.2, p: [bun.top.x, 0.2, 0] }, pull: s > T.reveal - 0.5 ? 1 : 1.15 };
     },
     probe: () => ({ fired: stageFired.slice(), T })
   };
