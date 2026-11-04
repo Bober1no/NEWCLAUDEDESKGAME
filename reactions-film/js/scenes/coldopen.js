@@ -73,8 +73,8 @@ export default function (K) {
   });
 
   const KEYS = [
-    { s: 0, p: [0.0, 0.11, 0.3], l: [0, 0.1, 0], f: 100, ap: 0.07, fd: 0.3 },
-    { s: 3.6, p: [0.0, 0.1, 0.28], l: [0, 0.085, 0], f: 100, ap: 0.07 },
+    { s: 0, p: [0.0, 0.14, 0.3], l: [0, 0.12, 0], f: 100, ap: 0.07, fd: 0.3 },
+    { s: 3.6, p: [0.0, 0.12, 0.28], l: [0, 0.1, 0], f: 100, ap: 0.07 },
     { s: 4.1, p: [0.04, 0.11, 0.27], l: [0, 0.06, 0], f: 100, ap: 0.06 },
     { s: 6.0, p: [0.09, 0.14, 0.3], l: [0, 0.05, 0], f: 85, ap: 0.05 },
     { s: 6.0, cut: true, p: [X[1] + 0.06, 0.08, 0.2], l: [X[1] + 0.012, 0.035, 0], f: 100, ap: 0.06 },
@@ -118,7 +118,7 @@ export default function (K) {
         post.bloom = { threshold: 1.2, strength: 0.9, radius: 0.7 }; post.exposure = 1.1;
       }
       const cam = shake(camKF(s, KEYS), time, s < 11 ? 0.0003 : 0, motion);
-      return { cam, world, post, glass: true, benchProps: s < 6 ? false : true, goggles: [-0.12, 0.1, 0.5] };
+      return { cam, world, post, glass: true, benchProps: s < 6 ? false : true, goggles: [-0.12, 0.1, 0.5], pull: vis.title ? 1 : undefined };
     },
     probe: () => ({ letters: letters.length })
   };

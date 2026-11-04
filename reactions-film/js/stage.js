@@ -91,7 +91,7 @@ export async function createStage(canvas, { phone = false, onProgress = () => {}
     if (lab.group.visible) lab.update(time);
     lab.warm.intensity = F.warm ? F.warm.i : 0; if (F.warm) lab.warm.position.set(...F.warm.p);
     // framing correction: the authored shots were too tight. Pull back and widen (lab/void more than micro).
-    const pull = world === 'micro' ? 1.25 : 1.45, widen = world === 'micro' ? 0.92 : 0.8;
+    const pull = F.pull ?? (world === 'micro' ? 1.25 : 1.45), widen = F.pull === 1 ? 1 : world === 'micro' ? 0.92 : 0.8;
     const c0 = F.cam, L = c0.l;
     const cam = { ...c0, p: [L[0] + (c0.p[0] - L[0]) * pull, L[1] + (c0.p[1] - L[1]) * pull, L[2] + (c0.p[2] - L[2]) * pull], focal: Math.max(22, (c0.focal || 35) * widen), focus: (c0.focus || 0) * pull, aperture: (c0.aperture || 0) * 0.85 };
     F.cam = cam;
