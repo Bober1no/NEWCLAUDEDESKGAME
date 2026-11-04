@@ -78,7 +78,7 @@ export default function (K) {
   coll.points.layers.set(LAYER_FX); K.pipe.noDepth.add(coll.points); root.add(coll.points);
   const streams = new Particles(400, (i, s, time, o) => { const on = sm(T.converge, T.converge + 0.6, s) * (1 - sm(T.nova - 0.2, T.nova, s)); if (on <= 0) return false; const src = [[0.1, 0.25, 0], [0.66, 0.2, 0], [1.4, 0.15, 0], [2.05, 0.15, 0], [2.6, 0.2, 0]][i % 5]; const u = ((i / 400) * 5 + s * 0.6) % 1; o.x = lerp(src[0], C.x, u); o.y = lerp(src[1], C.y, u) + Math.sin(u * Math.PI) * 0.12; o.z = Math.sin(u * 9 + i) * 0.02; o.size = 0.004; o.alpha = on * 0.8; const c = [[3, 1.4, 0.4], [3, 3, 3], [1, 3, 1.4], [3, 2.6, 0.6], [0.4, 2.6, 3.4]][i % 5]; o.r = c[0]; o.g = c[1]; o.b = c[2]; return true; }, { additive: true });
   streams.points.layers.set(LAYER_FX); K.pipe.noDepth.add(streams.points); root.add(streams.points);
-  const nova = new THREE.Mesh(new THREE.SphereGeometry(1, 32, 24), new THREE.MeshBasicMaterial({ color: new THREE.Color(20, 20, 22), transparent: true, depthWrite: false })); nova.position.copy(C); root.add(nova);
+  const nova = new THREE.Mesh(new THREE.SphereGeometry(1, 32, 24), new THREE.MeshBasicMaterial({ color: new THREE.Color(7, 7, 7.5), transparent: true, depthWrite: false })); nova.position.copy(C); root.add(nova);
   const shards = new Particles(300, (i, s, time, o) => { const a = s - T.nova; if (a < 0 || a > 3) return false; const th = hh(i, 1) * 6.28, ph = Math.acos(2 * hh(i, 2) - 1), v = 0.4 + hh(i, 3) * 0.8; o.x = C.x + Math.sin(ph) * Math.cos(th) * v * a; o.y = C.y + Math.cos(ph) * v * a - 0.4 * a * a; o.z = C.z + Math.sin(ph) * Math.sin(th) * v * a; o.size = 0.006; o.alpha = (1 - a / 3) * (0.5 + 0.5 * Math.sin(time * 20 + i)); const c = new THREE.Color(UI_COL[i % 14]); o.r = c.r * 2.5; o.g = c.g * 2.5; o.b = c.b * 2.5; return true; }, { additive: true });
   shards.points.layers.set(LAYER_FX); K.pipe.noDepth.add(shards.points); root.add(shards.points);
   // S7: glass periodic table + fireworks + orbiting ideas
@@ -150,8 +150,8 @@ export default function (K) {
       for (let i = 0; i < NB; i++) { const sp2 = lerp(0.6, 6, wild); const th = hh(i, 1) * 6.28 + s * sp2 * (0.5 + hh(i, 2)), ph = hh(i, 3) * 3.1 + s * sp2 * 0.7 * hh(i, 4); const r = 0.095 * (0.3 + 0.7 * hh(i, 5)); o3.position.set(C.x + r * Math.sin(ph) * Math.cos(th), C.y + r * Math.cos(ph), C.z + r * Math.sin(ph) * Math.sin(th)); o3.scale.setScalar(postNova ? 0.00001 : 0.006); o3.updateMatrix(); balls.setMatrixAt(i, o3.matrix); }
       balls.instanceMatrix.needsUpdate = true; coll.update(s, time); streams.update(s, time); shards.update(s, time);
       sphere.visible = !postNova;
-      const na = s - T.nova; nova.visible = na > 0 && na < 1.2; nova.scale.setScalar(Math.max(0.001, 0.05 + na * 0.9)); nova.material.opacity = Math.max(0, 1 - na / 1.2);
-      if (na > 0 && na < 1.4) { post.shock = { x: 0.5, y: 0.5, r: na * 0.8, amp: (1.4 - na) * 1.4 }; post.exposure = 1 + 1.5 * Math.exp(-na * 3); }
+      const na = s - T.nova; nova.visible = na > 0 && na < 0.7; nova.scale.setScalar(Math.max(0.001, 0.04 + na * 0.45)); nova.material.opacity = Math.max(0, 1 - na / 0.7) ** 2;
+      if (na > 0 && na < 1.4) { post.shock = { x: 0.5, y: 0.5, r: na * 0.8, amp: (1.4 - na) * 1.4 }; post.exposure = 1 + 0.6 * Math.exp(-na * 6); }
       // S7 reveal
       const rv = sm(T.reveal, T.reveal + 1, s);
       tableG.visible = s > T.reveal - 0.5; tableG.position.y = lerp(0.4, 0.62, rv);
