@@ -307,7 +307,7 @@ export function hudData(reelId, type, s, variant) {
     case 'temp': return { c: reelId === 'r3' ? PHYS.tubeTemp(s) : PHYS.r4Temp(s) };
     case 'ph': return { ph: PHYS.titrationPH(s) };
     case 'clock': return reelId === 'r7' ? { label: 'Time-lapse', v: PHYS.rustDays(s), unit: 'days' } : { label: 'Time-lapse', v: PHYS.timelapseHours(s), unit: 'h' };
-    case 'electrons': { const n = Math.min(8, Math.floor(Math.max(0, s - 7) / 1.3) * 2); const z = s >= 20 ? Math.min(6, Math.floor(Math.max(0, s - 21) / 1.2) * 2) : 0; return s >= 20 ? { lost: z, gained: z, who: 'Zn → Cu²⁺' } : { lost: n, gained: n, who: 'Mg → O₂' }; }
+    case 'electrons': { let n = 0; for (let k = 0; k < 8; k++) if (s >= 7 + Math.floor(k / 2) * 2.6 + (k % 2) * 1.3 + 1.4) n++; let z = 0; if (s >= 20) for (let i = 0; i < 3; i++) for (let k = 0; k < 2; k++) if (s >= 22.2 + i * 1.3 + k * 0.2) z++; return s >= 20 ? { lost: z, gained: z, who: 'Zn → Cu²⁺' } : { lost: n, gained: n, who: 'Mg → O₂' }; }
     case 'collide': return { tries: PHYS.attempts(s), hits: PHYS.successes(s) };
     case 'wave': return { pop: s >= 20.3 ? Math.min(1, (s - 20.3) / 0.15) : 0, s };
     case 'rate': return rateHud(s, variant);

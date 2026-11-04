@@ -3,12 +3,16 @@
   "private": true,
   "type": "module",
   "description": "Test harness and asset pipeline for The Reactions Film. Not shipped.",
-  "scripts": { "assets": "node build-assets.mjs", "test": "node run-tests.mjs" },
+  "scripts": {
+    "assets": "node build-assets.mjs",
+    "test": "node run-tests.mjs"
+  },
   "devDependencies": {
     "@gltf-transform/core": "4.1.1",
     "@gltf-transform/extensions": "4.1.1",
     "@gltf-transform/functions": "4.1.1",
     "acorn": "8.14.0",
+    "esbuild": "0.24.0",
     "jsdom": "25.0.1",
     "meshoptimizer": "0.22.0",
     "sharp": "0.33.5",
