@@ -20,8 +20,8 @@ export default function (K) {
 
   // ---------------- balloon on a retort stand, splint on a long pole
   const st = model('retort'); st.position.set(-0.12, 0, -0.05); G.balloon.add(st);
-  const bln = balloon(0xd9363e); bln.position.set(0, 0.45, 0); G.balloon.add(bln);
-  const string = new THREE.Mesh(new THREE.CylinderGeometry(0.0006, 0.0006, 0.07, 6), M.rubber); string.position.set(-0.03, 0.36, 0); string.rotation.z = 0.9; G.balloon.add(string);
+  const bln = balloon(0xd9363e); bln.position.set(0, 0.31, 0); G.balloon.add(bln); // knot at 0.31, body centred near 0.45
+  const string = new THREE.Mesh(new THREE.CylinderGeometry(0.0006, 0.0006, 0.13, 6), M.rubber); string.position.set(-0.045, 0.255, 0); string.rotation.z = Math.atan2(0.09, 0.11); G.balloon.add(string);
   const pole = new THREE.Group(); const stick = new THREE.Mesh(new THREE.CylinderGeometry(0.004, 0.004, 0.8, 10), M.wood); stick.rotation.z = Math.PI / 2; stick.position.x = 0.4; pole.add(stick);
   const sp = splint(0.08); sp.position.x = -0.08; pole.add(sp); G.balloon.add(pole);
   const tipFlame = new Flame(); tipFlame.group.scale.setScalar(0.35); G.balloon.add(tipFlame.group);

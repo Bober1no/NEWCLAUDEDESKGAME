@@ -28,8 +28,8 @@ for (const rel of ['assets/hdri/lab.exr', 'assets/models/bunsen.glb', 'assets/mo
 let html = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8');
 const css = fs.readFileSync(path.join(ROOT, 'css/film.css'), 'utf8');
 const safe = s => s.replace(/<\/script/gi, '<\\/script');
-html = html.replace('<link rel="stylesheet" href="css/film.css">', `<style>\n${css}\n</style>`);
-html = html.replace('<script type="module" src="js/main.js"></script>',
+html = html.replace('<link rel="stylesheet" href="css/film.css">', () => `<style>\n${css}\n</style>`);
+html = html.replace('<script type="module" src="js/main.js"></script>', () =>
   `<script>window.__RXF_SINGLE = true; window.__RXF_ASSETS = ${JSON.stringify(assets)};</script>\n` +
   `<script type="module">\n${safe(stageJS)}\n</script>\n<script type="module">\n${safe(mainJS)}\n</script>`);
 fs.mkdirSync(DIST, { recursive: true });

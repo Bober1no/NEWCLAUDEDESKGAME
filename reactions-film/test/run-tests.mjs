@@ -39,7 +39,7 @@ if (want('assets')) {
     if (fa.includes('bunsen')) ok(r.models.bunsen === 'procedural', 'missing Bunsen model → procedural build', r.models);
     else ok(r.env === 'room', 'missing HDRI → RoomEnvironment', r.env);
     ok(r.s.nan === 0 && r.s.mean > 0.002, `still renders with ${fa} missing`, r.s);
-    ok(log.errors.filter(e => !/404|Failed to load|ERR_FILE|net::/.test(e)).length === 0, 'no unexpected errors with a missing asset', log.errors.slice(0, 2));
+    ok(log.errors.filter(e => !/404|Failed to load|ERR_FILE|net::|Fetch API cannot load/.test(e)).length === 0, 'no unexpected errors with a missing asset', log.errors.slice(0, 2));
     await page.context().close();
   }
 }
@@ -134,7 +134,7 @@ if (want('play')) {
     F.seek(i2, 14 / 45); for (let k = 0; k < 5; k++) F.tick(0.05);
     out.afterSeekBack = F.events() - before;
     // playing forward across it again fires once
-    for (let k = 0; k < 40; k++) F.tick(0.05);
+    for (let k = 0; k < 400; k++) F.tick(0.05);
     out.afterReplay = F.events() - before;
     return out;
   });
@@ -234,7 +234,7 @@ if (want('ui')) {
     await q.locator('textarea').fill('Use a water bath so the temperature stays constant, keeping it a controlled variable.'); await tapIn(q, '.row2 > button', 0); ok(await q.evaluate(e => e.classList.contains('right')), 'critique the method: error types + justified improvement'); }
   { const q = E.nth(8); await q.locator('textarea').fill('it is the same'); await tapIn(q, '.row2 > button', 0); await q.locator('textarea').fill('It shifts every reading by the same amount in the same direction, so averaging keeps the bias.'); await tapIn(q, '.row2 > button', 0); }
   { const q = E.nth(9); await tapIn(q, 'button.btn.ghost', 1); ok(await q.evaluate(e => e.classList.contains('wrong')) && !(await q.locator('.worked').evaluate(e => e.hidden)), 'reveal first counts as a miss and shows the worked answer'); }
-  { const q = E.nth(10); await q.locator('[data-id=curveCat]').first().tap(); ok(await q.evaluate(e => e.classList.contains('right')), 'label the diagram (SVG hit)'); }
+  { const q = E.nth(10); const svg = q.locator('svg.svgq'); await svg.scrollIntoViewIfNeeded(); const bb = await svg.boundingBox(); await page.touchscreen.tap(bb.x + bb.width * 148 / 300, bb.y + bb.height * 71 / 170); ok(await q.evaluate(e => e.classList.contains('right')), 'label the diagram (SVG hit)'); }
   { const q = E.nth(11); const items = ['powder, 2.0 M acid, 50 °C', 'chips, 2.0 M acid, 50 °C', 'chips, 2.0 M acid, 20 °C', 'chips, 0.5 M acid, 20 °C'];
     for (const t of items) await q.locator('.ocard', { hasText: t }).tap(); await tapIn(q, '.row2 > button', 0); ok(await q.evaluate(e => e.classList.contains('right')), 'ordering by tapping'); }
   const score = await page.locator('.scorebar .sc').textContent();

@@ -128,8 +128,9 @@ export class Pipeline {
     this.sanitize = new ShaderPass(SanitizeShader);
     this.gtao = new GTAOPass(scene, camera, w, h);
     this.gtao.output = GTAOPass.OUTPUT.Default;
-    this.gtao.blendIntensity = 0.9;
-    this.gtao.updateGtaoMaterial({ radius: 0.06, distanceExponent: 1, thickness: 0.05, scale: 1, samples: 12, distanceFallOff: 1, screenSpaceRadius: false });
+    // contact shadows only: radius at the scale of glassware feet / touching atoms (film units are metres)
+    this.gtao.blendIntensity = 0.7;
+    this.gtao.updateGtaoMaterial({ radius: 0.012, distanceExponent: 1.5, thickness: 0.006, scale: 1, samples: 16, distanceFallOff: 0.6, screenSpaceRadius: false });
     this.gtao.updatePdMaterial({ lumaPhi: 10, depthPhi: 2, normalPhi: 3, radius: 6, rings: 2, samples: 12 });
     this.bokeh = new BokehPass(scene, camera, { focus: 0.3, aperture: 0.02, maxblur: 0.008 });
     this.bloom = new UnrealBloomPass(new THREE.Vector2(w, h), 0.6, 0.5, 2.0);
@@ -138,11 +139,21 @@ export class Pipeline {
     this.output = new OutputPass();
     this.smaa = new SMAAPass(w * r.getPixelRatio(), h * r.getPixelRatio());
     // hide particles/glass while the AO and DoF passes render their own depth/normal buffers
+    // AO must only see solid surfaces: hide particles, glass, liquids and anything transparent while it renders
+    // its depth/normal buffers (otherwise glass and liquids get blocky black occlusion). DoF hides particles only.
+    const isSeeThrough = o => o.isPoints || (o.material && (o.material.transmission > 0 || o.material.transparent || o.material.depthWrite === false || o.layers.mask === 2));
     for (const p of [this.gtao, this.bokeh]) {
-      const orig = p.render.bind(p);
-      p.render = (...a) => { const hid = []; for (const o of this.noDepth) if (o.visible) { o.visible = false; hid.push(o); } try { orig(...a); } finally { for (const o of hid) o.visible = true; } };
+      const orig = p.render.bind(p), ao = p === this.gtao;
+      p.render = (...a) => {
+        const hid = [];
+        for (const o of this.noDepth) if (o.visible) { o.visible = false; hid.push(o); }
+        if (ao) scene.traverseVisible(o => { if ((o.isMesh || o.isPoints) && isSeeThrough(o)) hid.push(o); });
+        for (const o of hid) o.visible = false;
+        try { orig(...a); } finally { for (const o of hid) o.visible = true; }
+      };
     }
-    for (const p of [this.renderPass, this.sanitize, this.gtao, this.bokeh, this.bloom, this.distort, this.grade, this.output, this.smaa]) c.addPass(p);
+    this.sanitize2 = new ShaderPass(SanitizeShader);
+    for (const p of [this.renderPass, this.sanitize, this.gtao, this.bokeh, this.sanitize2, this.bloom, this.distort, this.grade, this.output, this.smaa]) c.addPass(p);
     this.applyTier(this.tier);
     this.resize(this.size.x, this.size.y, true);
   }

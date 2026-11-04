@@ -23,13 +23,16 @@ export default function (K) {
 
   // ---------------- drop
   const bk = vessel('beaker', { level: 0.062, dist: 12 }); G.drop.add(bk.g);
+  // macro-photography backlight: a soft graded light card behind the beaker (out of focus)
+  const card = new THREE.Mesh(new THREE.PlaneGeometry(0.9, 0.5), new THREE.MeshBasicMaterial({ map: canvasTex(256, 256, g => { const gr = g.createRadialGradient(128, 110, 10, 128, 128, 180); gr.addColorStop(0, '#f4f8ff'); gr.addColorStop(0.55, '#9fb6cf'); gr.addColorStop(1, '#22303e'); g.fillStyle = gr; g.fillRect(0, 0, 256, 256); }), color: new THREE.Color(1.25, 1.25, 1.3) }));
+  card.position.set(0, 0.12, -0.32); G.drop.add(card);
   const pip = new THREE.Group(); const glassT = new THREE.Mesh(new THREE.CylinderGeometry(0.0035, 0.0012, 0.07, 24, 1, true), M.glass); glassT.layers.set(LAYER_GLASS); glassT.position.y = 0.035; pip.add(glassT);
   const bulb = new THREE.Mesh(new THREE.SphereGeometry(0.008, 24, 16), M.redRubber); bulb.scale.y = 1.6; bulb.position.y = 0.08; pip.add(bulb);
   pip.position.set(0, 0.105, 0); G.drop.add(pip);
   const dropM = new THREE.Mesh(new THREE.SphereGeometry(1, 24, 16), new THREE.MeshPhysicalMaterial({ color: 0xffffff, transmission: 1, ior: 1.33, thickness: 0.004, attenuationColor: new THREE.Color('#3b7f3a'), attenuationDistance: 0.004, roughness: 0.02 }));
   G.drop.add(dropM);
-  const splashMat = new THREE.MeshPhysicalMaterial({ color: 0xffffff, transmission: 1, ior: 1.33, thickness: 0.01, roughness: 0.03, attenuationColor: new THREE.Color('#9bd3a0'), attenuationDistance: 0.05 });
-  const spl = new Splash(splashMat, 0.035); spl.mc.position.set(0, 0.062 + 0.012, 0); G.drop.add(spl.mc);
+  const splashMat = new THREE.MeshPhysicalMaterial({ color: 0xffffff, transmission: 1, ior: 1.33, thickness: 0.004, roughness: 0.02, specularIntensity: 1, envMapIntensity: 1.2, attenuationColor: new THREE.Color('#cfe8d0'), attenuationDistance: 0.2 });
+  const spl = new Splash(splashMat, 0.035); spl.group.position.set(0, 0.0625, 0); G.drop.add(spl.group);
   const tend = dye(K.pipe, { n: 900, origin: [0, 0.06, 0], radius: 0.03, floor: bk.u.floor, top: 0.062, prog: s => sm(HIT, HIT + 2.2, s), alpha: 0.32, size: 0.009, colour: (i, o) => { const c = new THREE.Color(UI_COL[Math.floor((i % 9) / 9 * 14)]); o.r = c.r; o.g = c.g; o.b = c.b; } });
   bk.g.add(tend.points);
 

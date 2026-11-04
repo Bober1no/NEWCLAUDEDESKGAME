@@ -131,8 +131,8 @@ export function energySVG(interactive) {
   <text x="34" y="18" style="fill:#9AA6B6;font:600 9px JetBrains Mono,monospace">energy</text><text x="232" y="164" style="fill:#9AA6B6;font:600 9px JetBrains Mono,monospace">progress</text>
   <path data-id="curveUncat"${hit} d="M40 110 L80 110 C120 110 125 26 150 26 C175 26 180 128 220 128 L280 128" style="fill:none;stroke:#FF4859;stroke-width:${interactive ? 6 : 2.5}"/>
   <path data-id="curveCat"${hit} d="M40 110 L80 110 C118 110 128 70 150 70 C172 70 182 128 220 128 L280 128" style="fill:none;stroke:#33D17A;stroke-width:${interactive ? 6 : 2.5};stroke-dasharray:400;stroke-dashoffset:${interactive ? 0 : 400}"/>
-  <g data-id="eaUncat"${hit}><line x1="100" y1="110" x2="100" y2="30" style="stroke:#FF4859;stroke-width:2;marker-end:none"/><path d="M95 36 L100 26 L105 36Z" style="fill:#FF4859"/><rect x="88" y="26" width="24" height="86" style="fill:transparent"/></g>
-  <g data-id="eaCat"${hit}><line x1="160" y1="110" x2="160" y2="74" style="stroke:#33D17A;stroke-width:2"/><path d="M155 80 L160 70 L165 80Z" style="fill:#33D17A"/><rect x="148" y="68" width="24" height="44" style="fill:transparent"/></g>
+  <g data-id="eaUncat"${hit}><line x1="100" y1="110" x2="100" y2="30" style="stroke:#FF4859;stroke-width:2;marker-end:none"/><path d="M95 36 L100 26 L105 36Z" style="fill:#FF4859"/><rect x="93" y="84" width="14" height="28" style="fill:transparent"/></g>
+  <g data-id="eaCat"${hit}><line x1="160" y1="110" x2="160" y2="74" style="stroke:#33D17A;stroke-width:2"/><path d="M155 80 L160 70 L165 80Z" style="fill:#33D17A"/><rect x="153" y="88" width="14" height="24" style="fill:transparent"/></g>
   <text x="62" y="70" style="fill:#FF4859;font:700 9px JetBrains Mono,monospace">Ea</text>
   <text class="catlab" x="168" y="96" style="fill:#33D17A;font:700 9px JetBrains Mono,monospace;opacity:${interactive ? 1 : 0}">Ea (catalyst)</text>
   <text x="44" y="104" style="fill:#dfe5ec;font:600 9px JetBrains Mono,monospace">reactants</text><text x="226" y="122" style="fill:#dfe5ec;font:600 9px JetBrains Mono,monospace">products</text></svg>`;

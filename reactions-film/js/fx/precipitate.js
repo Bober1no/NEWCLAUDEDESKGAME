@@ -67,23 +67,41 @@ export class Precipitate {
   }
 }
 
-/** Crown splash from a falling drop (cold open): MarchingCubes ring that rises and collapses. */
+/** Crown splash from a falling drop (cold open): a thin water crown with a scalloped rim, round droplets
+ *  flung off its tips, and a Worthington jet. Pure function of age (seconds since impact). */
 export class Splash {
   constructor(mat, size = 0.05) {
-    this.mc = new MarchingCubes(36, mat, false, false, 9000);
-    this.mc.scale.setScalar(size); this.mc.frustumCulled = false; this.mc.renderOrder = 4;
+    this.group = new THREE.Group(); this.size = size; this.mat = mat;
+    this.crown = new THREE.Mesh(new THREE.BufferGeometry(), mat); this.crown.renderOrder = 4; this.group.add(this.crown);
+    this.drops = new THREE.InstancedMesh(new THREE.SphereGeometry(1, 16, 12), mat, 40); this.drops.frustumCulled = false; this.group.add(this.drops);
+    this.jet = new THREE.Mesh(new THREE.SphereGeometry(1, 20, 16), mat); this.group.add(this.jet);
+    this.o = new THREE.Object3D(); this.mc = this.group; // keeps the old .mc handle working
   }
   set(age) {
-    const mc = this.mc; mc.reset(); if (age < 0 || age > 1.6) { mc.visible = false; return; } mc.visible = true;
-    const rise = Math.sin(Math.min(1, age / 0.7) * Math.PI) * (age < 0.7 ? 1 : Math.max(0, 1 - (age - 0.7) / 0.6));
-    const R = 0.12 + age * 0.22;
-    for (let k = 0; k < 14; k++) {
-      const a = k / 14 * Math.PI * 2;
-      mc.addBall(0.5 + Math.cos(a) * R, 0.06 + rise * 0.22 * (0.8 + 0.4 * hh(k, 3)), 0.5 + Math.sin(a) * R, 0.09 * (1 - age * 0.4), 10);
-      mc.addBall(0.5 + Math.cos(a + 0.22) * R, 0.04 + rise * 0.12, 0.5 + Math.sin(a + 0.22) * R, 0.07 * (1 - age * 0.4), 10);
-      if (rise > 0.3) mc.addBall(0.5 + Math.cos(a) * R * 1.08, 0.12 + rise * 0.38, 0.5 + Math.sin(a) * R * 1.08, 0.025, 12);
+    const S = this.size, vis = age >= 0 && age < 1.6; this.group.visible = vis; if (!vis) return;
+    const rise = Math.sin(Math.min(1, age / 0.55) * Math.PI * 0.5) * (age < 0.55 ? 1 : Math.max(0, 1 - (age - 0.55) / 0.5));
+    const R = S * (0.18 + 0.35 * Math.sqrt(age)), H = S * 0.32 * rise, wall = S * 0.012, N = 12;
+    if (H > S * 0.01) {
+      const seg = 64, rows = 10, pos = [], idx = [];
+      for (let r = 0; r <= rows; r++) for (let k = 0; k <= seg; k++) {
+        const v = r / rows, th = k / seg * Math.PI * 2, tip = Math.pow(Math.max(0, Math.cos(th * N / 2)), 6);
+        const hh2 = H * v * (1 + 0.35 * tip * v), rr = R + R * 0.25 * v * v + wall * (r % 2 ? 0 : 0);
+        pos.push(Math.cos(th) * rr, hh2, Math.sin(th) * rr);
+      }
+      for (let r = 0; r < rows; r++) for (let k = 0; k < seg; k++) { const a = r * (seg + 1) + k, b = a + seg + 1; idx.push(a, b, a + 1, b, b + 1, a + 1); }
+      const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setIndex(idx); g.computeVertexNormals();
+      this.crown.geometry.dispose(); this.crown.geometry = g; this.crown.visible = true;
+      this.crown.material.side = THREE.DoubleSide;
+    } else this.crown.visible = false;
+    const o = this.o; let n = 0;
+    for (let k = 0; k < N * 3; k++) {
+      const t0 = 0.12 + (k % 3) * 0.07, a = age - t0; if (a < 0 || a > 0.9) continue;
+      const th = (Math.floor(k / 3) + 0.5 * (k % 3 === 2 ? 1 : 0)) / N * Math.PI * 2 + hh(k, 2) * 0.1, v = S * (1.3 + hh(k, 3) * 0.8), up = S * (2.6 + hh(k, 4) * 1.2);
+      const y = S * 0.3 + up * a - 4.9 * a * a; if (y < 0) continue;
+      o.position.set(Math.cos(th) * (R + v * a), y, Math.sin(th) * (R + v * a)); o.scale.setScalar(S * (0.025 + 0.015 * hh(k, 5))); o.updateMatrix(); this.drops.setMatrixAt(n++, o.matrix);
     }
-    const jet = Math.max(0, Math.sin(Math.max(0, age - 0.45) / 0.8 * Math.PI)); if (jet > 0) mc.addBall(0.5, 0.15 + jet * 0.5, 0.5, 0.05 * jet, 12);
-    mc.update();
+    this.drops.count = n; this.drops.instanceMatrix.needsUpdate = true;
+    const jt = age - 0.5, jh = jt > 0 ? Math.sin(Math.min(1, jt / 0.7) * Math.PI) : 0;
+    this.jet.visible = jh > 0.02; this.jet.scale.set(S * 0.05, S * (0.05 + 0.35 * jh), S * 0.05); this.jet.position.y = S * 0.35 * jh;
   }
 }

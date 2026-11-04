@@ -50,7 +50,7 @@ function gradBand(radius, y0, y1, label, maxMl, step) {
   tex.wrapS = THREE.ClampToEdgeWrapping;
   const geo = new THREE.CylinderGeometry(radius, radius, y1 - y0, SEG, 1, true, -Math.PI * 0.45, Math.PI * 0.9);
   const mat = new THREE.MeshStandardMaterial({ map: tex, transparent: true, roughness: 0.6, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2 });
-  const m = new THREE.Mesh(geo, mat); m.position.y = (y0 + y1) / 2; m.renderOrder = 3; return m;
+  const m = new THREE.Mesh(geo, mat); m.position.y = (y0 + y1) / 2; m.renderOrder = 3; m.layers.set(LAYER_GLASS); return m;
 }
 
 // ------------------------------------------------------------------ liquid
@@ -262,7 +262,10 @@ export function lumps(n, size, mat, spread, seed = 1, shape = 'chip') {
 export function balloon(col = 0xff4f5e) {
   const pts = []; for (let i = 0; i <= 30; i++) { const t = i / 30, a = t * Math.PI; const r = Math.sin(a) * (0.11 - 0.035 * t) + (t > 0.93 ? 0.004 : 0); pts.push(V2(Math.max(0.002, r), -Math.cos(a) * 0.13 + (t > 0.9 ? (t - 0.9) * 0.06 : 0))); }
   pts.push(V2(0.006, 0.142), V2(0.008, 0.152), V2(0.0001, 0.152));
-  const m = new THREE.Mesh(new THREE.LatheGeometry(pts.reverse(), 48), M.latex.clone()); m.material.color.set(col); m.castShadow = true; return m;
+  const geo = new THREE.LatheGeometry(pts.reverse(), 48); geo.rotateX(Math.PI); geo.translate(0, 0.152, 0); // knot at the bottom, origin at the knot
+  const m = new THREE.Mesh(geo, M.latex.clone()); m.material.color.set(col); m.castShadow = true;
+  const knot = new THREE.Mesh(new THREE.SphereGeometry(0.0045, 12, 8), m.material); knot.scale.y = 0.7; m.add(knot);
+  return m;
 }
 export function reagentBottle(text, amber, h = 0.14) {
   const g = new THREE.Group(); const r = 0.032;

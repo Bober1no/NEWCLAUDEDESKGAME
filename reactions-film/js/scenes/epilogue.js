@@ -52,8 +52,8 @@ export default function (K) {
   const acid = vessel('beaker', { level: 0.05, dist: 10 }); acid.g.position.set(0.66, 0, 0); root.add(acid.g);
   const acidB = new Bubbles({ n: 260, life: 0.7, size: 0.0012, rise: 0.1, surface: () => 0.05, radius: y => acid.u.inner(y), rate: s => (s > T.drop + 0.2 && s < T.boom + 1 ? 1 : 0), site: (j, k, v) => v.set(Math.sin(j * 2.4) * 0.012, acid.u.floor + 0.006, Math.cos(j * 2.4) * 0.012) }); acid.g.add(acidB.group);
   const bln = balloon(0xd9363e); root.add(bln);
-  const sp = splint(0.12); sp.position.set(0.86, 0.42, 0); sp.rotation.z = Math.PI - 0.15; root.add(sp);
-  const fire = new Fireball(); fire.group.position.set(0.68, 0.4, 0); root.add(fire.group);
+  const sp = splint(0.12); sp.position.set(0.88, 0.5, 0); sp.rotation.z = Math.PI - 0.15; root.add(sp);
+  const fire = new Fireball(); fire.group.position.set(0.74, 0.48, 0); root.add(fire.group);
 
   // S3: burette + 12 beakers pH wave
   const bur = model('burette'); bur.position.set(1.0, 0.16, 0); root.add(bur);
@@ -132,7 +132,7 @@ export default function (K) {
       acidB.update(s); acid.liq.set(0.05, 0.0006, time);
       // balloon inflates on the beaker, floats into the splint, boom
       const inf = sm(T.drop + 0.3, T.balloonUp, s), up = sm(T.balloonUp, T.boom, s);
-      bln.visible = s < T.boom; bln.scale.setScalar(lerp(0.15, 0.6, inf)); bln.position.set(lerp(0.66, 0.74, up), lerp(0.1, 0.4, up), 0);
+      bln.visible = s < T.boom; bln.scale.setScalar(lerp(0.15, 0.6, inf)); bln.position.set(lerp(0.66, 0.74, up), lerp(0.09, 0.39, up), 0);
       sp.userData.glow(1); fire.set(s - T.boom, 0.32);
       if (s > T.boom && s < T.boom + 1) post.shock = { x: 0.5, y: 0.45, r: (s - T.boom) * 0.9, amp: (1 - (s - T.boom)) * 1.3 };
       // S3 knock + wave down the pH rainbow

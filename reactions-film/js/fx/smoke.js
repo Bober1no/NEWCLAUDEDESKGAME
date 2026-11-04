@@ -37,7 +37,7 @@ export function sparks(pipeline, { n = 160, origin = [0, 0, 0], active = () => 1
 
 /** Dye tendrils spreading from a drop point inside a vessel: the colour change is a diffusion front.
  *  prog(s) 0..1 = how far the front has travelled; colour(i, out) sets particle colour. */
-export function dye(pipeline, { n = 700, origin = [0, 0.05, 0], radius = 0.03, floor = 0.003, top = 0.06, prog = () => 0, colour = (i, o) => { o.r = 1; o.g = 0; o.b = 0; }, alpha = 0.2, size = 0.006, seed = 1 } = {}) {
+export function dye(pipeline, { n = 1400, origin = [0, 0.05, 0], radius = 0.03, floor = 0.003, top = 0.06, prog = () => 0, colour = (i, o) => { o.r = 1; o.g = 0; o.b = 0; }, alpha = 0.2, size = 0.006, seed = 1 } = {}) {
   return fx(new Particles(n, (i, s, time, o) => {
     const p = prog(s); if (p <= 0) return false;
     const tend = i % 9, d = hh(i, seed) , lag = hh(i, seed + 1) * 0.6;
@@ -45,11 +45,11 @@ export function dye(pipeline, { n = 700, origin = [0, 0.05, 0], radius = 0.03, f
     if (q <= 0) return false;
     const a0 = tend / 9 * 6.283 + hh(tend, seed) * 0.6, curl = 2.2 + hh(tend, seed + 4) * 2;
     const depth = q * (top - floor) * (0.4 + 0.8 * d);
-    const rad = radius * Math.min(1, q * (0.3 + d * 1.2)) * (0.4 + 0.6 * hh(i, 3));
+    const rad = radius * Math.min(1, q * (0.3 + d * 1.2)) * (0.35 + 0.65 * Math.sqrt(hh(i, 3))) + Math.sin(i * 0.37 + q * 6) * 0.002;
     const a = a0 + curl * q * (0.5 + d) + Math.sin(time * 0.3 + i) * 0.05;
     o.x = origin[0] + Math.cos(a) * rad; o.z = origin[2] + Math.sin(a) * rad;
     o.y = Math.max(floor + 0.002, origin[1] - depth + Math.sin(q * 9 + i) * 0.002);
-    o.size = size * (0.6 + 1.6 * q); o.alpha = alpha * Math.min(1, q * 3) * (0.5 + 0.5 * hh(i, 9));
+    o.size = size * (1.0 + 1.8 * q) * (0.6 + 0.8 * hh(i, 11)); o.alpha = alpha * 0.32 * Math.min(1, q * 3) * (0.5 + 0.5 * hh(i, 9));
     colour(i, o, q); return true;
   }), pipeline);
 }
