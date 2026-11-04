@@ -34,7 +34,7 @@ export default function (K) {
   const cards = [['chips', 0], ['powder', 0.26]].map(([t, x]) => { const tex = canvasTex(256, 64, g => { g.fillStyle = 'rgba(8,12,18,.85)'; g.fillRect(0, 0, 256, 64); g.fillStyle = '#FFE14D'; g.font = 'bold 32px JetBrains Mono, monospace'; g.textAlign = 'center'; g.fillText(t, 128, 44); }); const m = new THREE.Mesh(new THREE.PlaneGeometry(0.08, 0.02), new THREE.MeshBasicMaterial({ map: tex, transparent: true })); m.position.set(x, 0.002, 0.15); m.rotation.x = -Math.PI / 2; root.add(m); return m; });
 
   const KEYS = [
-    { s: 0, p: [0.35, 0.25, 0.55], l: [-0.03, 0.07, 0], f: 35, ap: 0.012 },
+    { s: 0, p: [0.24, 0.17, 0.38], l: [-0.03, 0.07, 0], f: 40, ap: 0.015 },
     { s: 12, cut: true, p: [0.05, 0.12, 0.36], l: [-0.01, 0.045, 0.1], f: 85, ap: 0.05 },
     { s: 18, p: [0.07, 0.12, 0.34], l: [-0.01, 0.045, 0.1], f: 85, ap: 0.05 },
     { s: 21.5, cut: true, p: [-0.19, 0.26, 0.09], l: [-0.19, 0.13, 0.03], f: 85, ap: 0.05 },
@@ -58,7 +58,7 @@ export default function (K) {
       A.b.update(s); B.b.update(s); A.v.liq.set(0.035, 0.0004, time); B.v.liq.set(0.035, 0.0005, time);
       spray.update(s, time);
       const cam = shake(camKF(s, KEYS), time, 0.0009, motion);
-      return { cam, world: 'lab', post: { bloom: { threshold: 2.3, strength: 0.45, radius: 0.5 } }, goggles: [-0.08, 0.16, 0.3], bottles: [-0.3, -0.12], glass: true };
+      return { cam, world: 'lab', post: { bloom: { threshold: 2.3, strength: 0.45, radius: 0.5 } }, goggles: [-0.32, -0.06, 0.5], bottles: [-0.3, -0.16], glass: true };
     }
   };
 }

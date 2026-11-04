@@ -154,7 +154,8 @@ function roundedBox(w, h, d, r = 0.006, seg = 3) {
 export function balance() {
   const g = new THREE.Group();
   const body = new THREE.Mesh(roundedBox(0.2, 0.05, 0.24, 0.012), M.blackPlastic); body.castShadow = body.receiveShadow = true; g.add(body);
-  const pg = new THREE.Group(); pg.position.set(0, 0.03, 0.098); pg.rotation.x = 0.32; g.add(pg);
+  const pg = new THREE.Group(); pg.position.set(0, 0.024, 0.142); pg.rotation.x = 0.38; g.add(pg); // display ledge in front of the body
+  const ledge = new THREE.Mesh(roundedBox(0.17, 0.02, 0.05, 0.005), M.blackPlastic); ledge.position.set(0, 0.002, 0.135); g.add(ledge);
   const panel = new THREE.Mesh(roundedBox(0.16, 0.012, 0.045, 0.004), M.whitePlastic); pg.add(panel);
   const lcdTex = canvasTex(512, 160, (c) => { c.fillStyle = '#8f9c86'; c.fillRect(0, 0, 512, 160); });
   const lcd = new THREE.Mesh(new THREE.PlaneGeometry(0.075, 0.0235), new THREE.MeshStandardMaterial({ map: lcdTex, emissive: 0xffffff, emissiveMap: lcdTex, emissiveIntensity: 0.5, roughness: 0.3, polygonOffset: true, polygonOffsetFactor: -2 }));

@@ -84,6 +84,10 @@ export default function (K) {
     g.add(deliveryTube([[-0.16, -0.015, 0], [-0.16, 0.0, 0], [-0.1, 0.0, 0], [0.02, 0.0, 0]], 0.0025));
     const b = new Bubbles({ n: 80, life: 0.8, size: 0.0009, rise: 0.06, surface: () => 0.03, radius: y => fl.userData.inner(y), rate: s => (s > 58.5 ? (i ? 0.35 : 1) : 0), site: (j, k, v) => v.set(Math.sin(j * 2.4) * 0.012, fl.userData.floor + 0.004, Math.cos(j * 2.4) * 0.012) }); fl.add(b.group);
     const lab = label(i ? 'chips' : 'powder', 0.07); lab.position.set(-0.16, -0.115, 0.04); g.add(lab);
+    for (const x of [0.03, 0.17]) { const rod = new THREE.Mesh(new THREE.CylinderGeometry(0.004, 0.004, 0.12, 12), M.steel); rod.position.set(x, -0.06, -0.025); g.add(rod);
+      const foot = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.008, 0.06), M.castIron); foot.position.set(x, -0.116, -0.025); g.add(foot);
+      const arm = new THREE.Mesh(new THREE.BoxGeometry(0.012, 0.012, 0.03), M.castIron); arm.position.set(x, 0.0, -0.012); g.add(arm);
+      const ring = new THREE.Mesh(new THREE.TorusGeometry(0.014, 0.0025, 8, 24), M.castIron); ring.position.set(x, 0, 0); ring.rotation.y = Math.PI / 2; g.add(ring); }
     return { g, plunger, rodm, b, k: i ? 28 : 10 };
   });
 
