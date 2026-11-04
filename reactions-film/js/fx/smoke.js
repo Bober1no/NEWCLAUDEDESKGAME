@@ -67,11 +67,13 @@ export class Fireball {
           vec3 p = position * (1.0 + (n - 0.5) * 0.45); vec4 mv = modelViewMatrix * vec4(p, 1.0); vNo = normalize(normalMatrix * normal); vV = normalize(-mv.xyz); gl_Position = projectionMatrix * mv; }`,
       fragmentShader: `uniform float uAge; varying float vN; varying vec3 vNo; varying vec3 vV;
         void main(){ float f = abs(dot(normalize(vNo), normalize(vV))); float core = pow(f, 2.0);
-          float heat = clamp(1.0 - uAge * 1.6, 0.0, 1.0);
-          vec3 c = mix(vec3(1.6, 0.45, 0.08), vec3(5.0, 4.0, 2.6), core * heat);
-          c = mix(c, vec3(0.4, 0.7, 2.2), (1.0 - f) * 0.45 * heat);
-          float a = smoothstep(0.25, 0.75, vN + core * 0.4) * (1.0 - smoothstep(0.35, 1.0, uAge));
-          gl_FragColor = vec4(c * a * 0.55, 1.0); }`
+          float heat = clamp(1.0 - uAge * 1.4, 0.0, 1.0);
+          float t = clamp(vN * 0.8 + core * 0.6, 0.0, 1.0) * heat;
+          vec3 c = mix(vec3(0.55, 0.08, 0.02), vec3(2.6, 0.9, 0.12), smoothstep(0.1, 0.5, t));
+          c = mix(c, vec3(4.0, 3.2, 1.4), smoothstep(0.55, 0.95, t));
+          c = mix(c, vec3(0.35, 0.6, 2.0), (1.0 - f) * 0.35 * heat * heat);
+          float a = smoothstep(0.3, 0.7, vN + core * 0.35) * (1.0 - smoothstep(0.35, 1.0, uAge));
+          gl_FragColor = vec4(c * a * 0.8, 1.0); }`
     });
     this.mesh = new THREE.Mesh(new THREE.IcosahedronGeometry(1, 5), this.mat); this.mesh.renderOrder = 7; this.mesh.visible = false;
     this.light = new THREE.PointLight(0xffb060, 0, 3, 2);

@@ -176,18 +176,20 @@ export function balance() {
   return g;
 }
 export function goggles() {
+  // curved polycarbonate visor + soft vinyl frame + vents + elastic strap, resting tilted on the bench
   const g = new THREE.Group();
-  const frameMat = new THREE.MeshPhysicalMaterial({ color: 0x2f7fd8, roughness: 0.45, transmission: 0.35, thickness: 0.002, clearcoat: 0.4 });
-  const lensShape = new THREE.Shape(); lensShape.absellipse(0, 0, 0.085, 0.032, 0, Math.PI * 2);
-  const lens = new THREE.Mesh(new THREE.ExtrudeGeometry(lensShape, { depth: 0.002, bevelEnabled: true, bevelThickness: 0.001, bevelSize: 0.001, bevelSegments: 2, curveSegments: 40 }), M.glass);
-  lens.layers.set(LAYER_GLASS); lens.position.z = 0.002;
-  const frame = new THREE.Mesh(new THREE.TorusGeometry(1, 0.06, 10, 64), frameMat); frame.scale.set(0.087, 0.034, 0.25); frame.scale.z = 0.1;
-  const rim = new THREE.Mesh(new THREE.ExtrudeGeometry(lensShape, { depth: 0.022, bevelEnabled: false, curveSegments: 40 }), frameMat); rim.scale.set(1.02, 1.08, 1); rim.position.z = -0.02;
-  const strap = new THREE.Mesh(new THREE.TorusGeometry(0.1, 0.0016, 6, 64, Math.PI * 1.15), new THREE.MeshStandardMaterial({ color: 0x1c1d22, roughness: 0.8 }));
-  strap.scale.set(1, 0.18, 1.3); strap.rotation.set(Math.PI / 2, 0, -Math.PI * 0.075); strap.position.set(0, 0, -0.03); strap.scale.set(1, 1.6, 0.18);
-  for (const o of [lens, frame, rim]) { o.castShadow = true; g.add(o); }
-  g.add(strap);
-  g.rotation.x = -Math.PI / 2 + 0.25; g.position.y = 0.018;
+  const R = 0.085, H = 0.042, TH = 1.55;
+  const lens = new THREE.Mesh(new THREE.CylinderGeometry(R, R, H, 48, 1, true, -TH / 2, TH), M.glass); lens.layers.set(LAYER_GLASS); lens.renderOrder = 2; g.add(lens);
+  const frameMat = new THREE.MeshPhysicalMaterial({ color: 0x2a3440, roughness: 0.55, clearcoat: 0.3, normalMap: TX.grainN, normalScale: new THREE.Vector2(0.15, 0.15) });
+  const rimPts = (y) => { const pts = []; for (let i = 0; i <= 40; i++) { const a = -TH / 2 + TH * i / 40; pts.push(new THREE.Vector3(Math.sin(a) * (R + 0.002), y, Math.cos(a) * (R + 0.002))); } return new THREE.CatmullRomCurve3(pts); };
+  for (const y of [-H / 2, H / 2]) { const t = new THREE.Mesh(new THREE.TubeGeometry(rimPts(y), 60, 0.0045, 10, false), frameMat); g.add(t); }
+  for (const s of [-1, 1]) { const a = s * TH / 2; const side = new THREE.Mesh(new THREE.BoxGeometry(0.012, H + 0.009, 0.02), frameMat); side.position.set(Math.sin(a) * (R - 0.004), 0, Math.cos(a) * (R - 0.004)); side.rotation.y = a; g.add(side);
+    for (let k = 0; k < 3; k++) { const v = new THREE.Mesh(new THREE.CylinderGeometry(0.0022, 0.0022, 0.003, 10), M.blackPlastic); v.rotation.z = Math.PI / 2; v.position.set(Math.sin(a) * (R + 0.003), -0.012 + k * 0.012, Math.cos(a) * (R + 0.003)); v.rotation.y = a; g.add(v); } }
+  const nose = new THREE.Mesh(new THREE.TorusGeometry(0.012, 0.004, 8, 20, Math.PI), frameMat); nose.position.set(0, -H / 2, R + 0.001); g.add(nose);
+  const strapC = new THREE.CatmullRomCurve3([new THREE.Vector3(Math.sin(-TH / 2) * R, 0, Math.cos(-TH / 2) * R), new THREE.Vector3(-0.1, -0.012, -0.02), new THREE.Vector3(-0.05, -0.02, -0.075), new THREE.Vector3(0.05, -0.02, -0.075), new THREE.Vector3(0.1, -0.012, -0.02), new THREE.Vector3(Math.sin(TH / 2) * R, 0, Math.cos(TH / 2) * R)]);
+  const strap = new THREE.Mesh(new THREE.TubeGeometry(strapC, 60, 0.0018, 6, false), new THREE.MeshStandardMaterial({ color: 0x1b1d22, roughness: 0.85 })); strap.scale.y = 3; g.add(strap);
+  g.traverse(o => { if (o.isMesh) o.castShadow = true; });
+  g.rotation.x = -0.32; g.position.y = H / 2 + 0.006;
   const w = new THREE.Group(); w.add(g); return w;
 }
 export function dropperBottle(amber = true, text = 'UNIV. IND.') {
