@@ -1,0 +1,57 @@
+{
+  "credits": [
+    {
+      "id": "bunsen",
+      "prop": "Bunsen burner",
+      "title": "Bunsen Burner",
+      "author": "Dreamsoft Innovations Private Limited (https://sketchfab.com/dreamsoftin)",
+      "source": "https://sketchfab.com/3d-models/bunsen-burner-5185e41b2beb48fa8f15ca3707f43e10",
+      "license": "CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)",
+      "via": "https://github.com/mucel29/chemistry/tree/11c09bc044f5042fcb47bce0b115873cc5ca6a3c/public/assets/burner",
+      "modified": "rescaled to metres, re-centred, textures resized to WebP, geometry meshopt-compressed; glass and metal materials replaced at runtime",
+      "file": "assets/models/bunsen.glb",
+      "kb": 345,
+      "tris": 2756
+    },
+    {
+      "id": "tripod",
+      "prop": "Tripod",
+      "title": "Tripod stand",
+      "author": "AmirulIqwan (https://sketchfab.com/AmirulIqwan)",
+      "source": "https://sketchfab.com/3d-models/tripod-stand-c2773043c472429c86b4ee3b28f9b156",
+      "license": "CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)",
+      "via": "https://github.com/mucel29/chemistry/tree/11c09bc044f5042fcb47bce0b115873cc5ca6a3c/public/assets/stand",
+      "modified": "rescaled to metres, re-centred, textures resized to WebP, geometry meshopt-compressed; glass and metal materials replaced at runtime",
+      "file": "assets/models/tripod.glb",
+      "kb": 91,
+      "tris": 6912
+    },
+    {
+      "id": "retort",
+      "prop": "Retort (burette) stand with clamp",
+      "title": "Burette stand",
+      "author": "VeeRuby Technologies Pvt Ltd (https://sketchfab.com/veerubyinc)",
+      "source": "https://sketchfab.com/3d-models/burette-stand-9d204d9be6744ea1a491bd152c61228f",
+      "license": "CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)",
+      "via": "https://github.com/Visuals-Smart-Tech/chem-quest-lab-adventures-main/tree/e3236abd18dda768eb01eb09bee6007a5a37eaf4/public/models/burette_stand",
+      "modified": "rescaled to metres, re-centred, textures resized to WebP, geometry meshopt-compressed; glass and metal materials replaced at runtime",
+      "file": "assets/models/retort.glb",
+      "kb": 94,
+      "tris": 17548
+    },
+    {
+      "id": "burette",
+      "prop": "Burette",
+      "title": "Burette",
+      "author": "3dLabWare (https://sketchfab.com/3dlabwaremodels)",
+      "source": "https://sketchfab.com/3d-models/burette-4bb5f945638a46ba9ea5684d0f38ebad",
+      "license": "CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)",
+      "via": "https://github.com/Visuals-Smart-Tech/chem-quest-lab-adventures-main/tree/e3236abd18dda768eb01eb09bee6007a5a37eaf4/public/models/burette",
+      "modified": "rescaled to metres, re-centred, textures resized to WebP, geometry meshopt-compressed; glass and metal materials replaced at runtime",
+      "file": "assets/models/burette.glb",
+      "kb": 57,
+      "tris": 7826
+    }
+  ],
+  "failed": []
+}

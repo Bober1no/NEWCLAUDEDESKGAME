@@ -1,0 +1,64 @@
+<!doctype html>
+<!--
+  REACTIONS LAB · a first-person destruction sandbox in a school science lab.
+  ASSETS (embedded/relative, nothing fetched from asset sites at runtime)
+  - assets/hdri/lab.exr: Poly Haven interior HDRI (CC0), repackaged in @pmndrs/assets 1.7.0 (CC0-1.0)
+  - assets/models/bunsen.glb: "Bunsen Burner" by Dreamsoft Innovations Private Limited, CC BY 4.0
+      https://sketchfab.com/3d-models/bunsen-burner-5185e41b2beb48fa8f15ca3707f43e10
+  - assets/models/tripod.glb: "Tripod stand" by AmirulIqwan, CC BY 4.0
+      https://sketchfab.com/3d-models/tripod-stand-c2773043c472429c86b4ee3b28f9b156
+  - assets/models/retort.glb: "Burette stand" by VeeRuby Technologies Pvt Ltd, CC BY 4.0
+      https://sketchfab.com/3d-models/burette-stand-9d204d9be6744ea1a491bd152c61228f
+  - assets/models/burette.glb: "Burette" by 3dLabWare, CC BY 4.0
+      https://sketchfab.com/3d-models/burette-4bb5f945638a46ba9ea5684d0f38ebad
+  Everything else (room, benches, glassware, stools, tools, effects, sounds) is procedural.
+  Libraries: three.js r160 (MIT), Rapier 0.14 physics (Apache-2.0), from jsDelivr.
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Reactions Lab</title>
+<meta name="theme-color" content="#05070B">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,500..900&family=Atkinson+Hyperlegible:wght@400;700&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/game.css">
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/",
+  "@dimforge/rapier3d-compat": "https://cdn.jsdelivr.net/npm/@dimforge/rapier3d-compat@0.14.0/rapier.es.js"
+} }
+</script>
+</head>
+<body>
+<canvas id="gl"></canvas>
+<div id="hud"></div>
+<div id="menu" hidden>
+  <div class="card">
+    <div class="kick">A Year 10 Chemistry lab · after hours</div>
+    <h1>REACTIONS LAB</h1>
+    <p class="tag">Every bench, every beaker, every window. Break it where you hit it. Spill things together and see what reacts.</p>
+    <button id="play" class="big">Click to play</button>
+    <div class="grid">
+      <div><b>WASD</b> move · <b>Shift</b> sprint · <b>Space</b> jump · <b>C</b> crouch</div>
+      <div><b>Mouse</b> look · <b>Click</b> use tool · <b>Right-click</b> launch (grabber)</div>
+      <div><b>1–6 / wheel</b> switch tool · <b>E</b> Bunsen: light / air hole / off</div>
+      <div><b>Esc</b> pause · <b>Shift+R</b> reset the lab · <b>F3</b> stats</div>
+    </div>
+    <div class="tools"><span>1 Hammer</span><span>2 Grabber</span><span>3 Bearing launcher</span><span>4 H₂ balloon</span><span>5 Bunsen torch</span><span>6 Scanner</span></div>
+    <div class="opts">
+      <button id="quality">Quality: HIGH</button>
+      <button id="motion">Screen shake: on</button>
+      <label>Sensitivity <input id="sens" type="range" min="6" max="60" step="1"></label>
+      <label>Field of view <input id="fov" type="range" min="60" max="100" step="1"></label>
+      <button id="reset">Reset the lab</button>
+    </div>
+    <p class="tip">Try: spill acid on magnesium · pour lead nitrate into potassium iodide · torch a balloon · launch a stool through a window.</p>
+  </div>
+</div>
+<div id="loader"><div class="ld"><b>REACTIONS LAB</b><span id="ldMsg">Loading…</span><i><em id="ldBar"></em></i></div></div>
+<div id="notice" hidden></div>
+<script type="module" src="js/main.js"></script>
+</body>
+</html>
