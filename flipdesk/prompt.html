@@ -96,6 +96,22 @@
 
         <div class="card" data-section="where">
           <div class="card-head"><h2>4. Where and how</h2></div>
+          <div class="field">
+            <label for="access">How will Claude get to the listings?</label>
+            <select id="access" name="access">
+              <option value="browser">Browser with my logins (Claude Desktop browser / Claude in Chrome)</option>
+              <option value="web">Web search only (no logins)</option>
+              <option value="paste">I'll paste listings myself</option>
+            </select>
+            <div class="hint" id="accessHint"></div>
+          </div>
+          <div class="row" id="browserOpts">
+            <div class="field"><label for="scanCount">Listings to skim (results pages)</label>
+              <select id="scanCount" name="scanCount"><option>100</option><option selected>300</option><option>500</option><option>1000</option><option>2000</option></select>
+              <div class="hint">Bigger numbers take much longer. 300–500 is a solid session.</div></div>
+            <div class="field"><label for="openCount">Listings to open and read properly</label>
+              <select id="openCount" name="openCount"><option>20</option><option selected>40</option><option>75</option><option>150</option></select></div>
+          </div>
           <div class="row">
             <div class="field"><label for="suburb">Suburb / area</label><input type="text" id="suburb" name="suburb" placeholder="e.g. Box Hill"></div>
             <div class="field"><label for="state">State</label>
@@ -150,9 +166,7 @@
       <div class="card">
         <div class="card-head"><h3>Search links</h3><small>Open these yourself. Facebook needs you logged in.</small></div>
         <div class="links" id="links"></div>
-        <div class="callout warn mt" style="font-size:.82rem">
-          <p>Claude usually can't log in to Facebook Marketplace. If it can't open a page, it should say so, give you the exact searches to run, and wait for you to paste the results. The prompt tells it to do that and not invent listings. If you paste listings, you'll get better advice.</p>
-        </div>
+        <div class="callout warn mt" style="font-size:.82rem" id="accessNote"></div>
       </div>
 
       <div class="card">

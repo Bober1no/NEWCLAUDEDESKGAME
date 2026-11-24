@@ -26,6 +26,6 @@ Then go to http://localhost:8080.
 
 ## Notes
 
-- The generated prompts tell Claude to value items on **sold** prices, to label estimates, and **never to invent listings**. Claude generally can't log in to Facebook Marketplace. When it can't access a site, it will give you searches to run so you can paste the results back.
+- The Prompt Builder has three access modes. **Browser** (default): for Claude Desktop's built-in browser or Claude in Chrome while you are logged in to Facebook. Claude skims a set number of listings, opens the best ones, and stays read-only (no messages, offers or account changes). It stops at any captcha or rate-limit warning. **Web search only**: no logins, so Facebook usually isn't readable and Claude gives you searches to run. **Paste**: you supply the listings. In every mode Claude is told to value items on sold prices and never invent listings.
 - Export a backup from Inventory → Backup & data regularly. Clearing your browser data deletes everything.
 - The legal/tax section is general information, not advice.
