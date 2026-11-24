@@ -86,12 +86,17 @@
         <div class="field"><label for="iBuyDate">Purchase date</label><input type="date" id="iBuyDate"></div>
         <div class="field"><label for="iRepair">Repairs / parts / upgrades ($)</label><input type="number" id="iRepair" min="0" step="0.01"></div>
       </div>
+      <div class="row">
+        <div class="field"><label for="iComps">Comps</label><select id="iComps"><option value="">None</option></select><div class="hint" id="iCompsInfo"></div></div>
+        <div class="field"><label for="iExp">Expected sale ($)</label><input type="number" id="iExp" min="0" step="1"><div class="hint">Filled from comps. You can type it in, but sold comps are better.</div></div>
+      </div>
       <h3>Sell side</h3>
       <div class="row">
         <div class="field"><label for="iList">List price ($)</label><input type="number" id="iList" min="0" step="0.01"></div>
         <div class="field"><label for="iSale">Sale price ($)</label><input type="number" id="iSale" min="0" step="0.01"></div>
         <div class="field"><label for="iSaleDate">Sale date</label><input type="date" id="iSaleDate"></div>
         <div class="field"><label for="iSellCost">Selling costs ($)</label><input type="number" id="iSellCost" min="0" step="0.01"><div class="hint">Fees, shipping, fuel</div></div>
+        <div class="field"><label for="iEnq">Enquiries (messages)</label><input type="number" id="iEnq" min="0" step="1"><div class="hint">Use +1 in the table each time someone messages.</div></div>
       </div>
       <label class="inline-check"><input type="checkbox" id="iDefect"> Turned out to have a defect / wasn't as described</label>
       <div class="field mt"><label for="iNotes">Notes</label><textarea id="iNotes" rows="2" placeholder="Test results, serial, what you fixed, buyer details"></textarea></div>
@@ -102,6 +107,7 @@
   <datalist id="sources"><option>FB Marketplace</option><option>Gumtree</option><option>eBay</option><option>Cash Converters</option><option>CeX</option><option>GraysOnline</option><option>Garage sale</option><option>Friend / referral</option></datalist>
 </main>
 <script src="assets/js/core.js"></script>
+<script src="assets/js/comps.js"></script>
 <script src="assets/js/inventory.js"></script>
 </body>
 </html>

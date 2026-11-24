@@ -19,6 +19,7 @@
     fbCity: 'melbourne',
     radiusKm: 30,
     transport: 'car',
+    agingDays: 14,
   };
 
   const CATEGORIES = ['Desktop PC', 'GPU', 'CPU', 'Motherboard', 'RAM', 'Storage', 'PSU', 'Laptop', 'Phone', 'Tablet', 'Console', 'Monitor', 'Peripherals', 'Other'];
@@ -48,7 +49,8 @@
 
   const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
   const num = (v) => { const n = parseFloat(v); return Number.isFinite(n) ? n : 0; };
-  const today = () => new Date().toISOString().slice(0, 10);
+  // Local calendar date (toISOString would give UTC, i.e. yesterday in Australia before ~11am).
+  const today = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
   const daysBetween = (a, b) => {
     if (!a || !b) return null;
     return Math.max(0, Math.round((new Date(b) - new Date(a)) / 86400000));
@@ -75,6 +77,38 @@
     return null;
   }
   const isClosed = (it) => ['sold', 'parted', 'written-off'].includes(it.status);
+
+  /** Days the item's capital was (or has been) tied up. Minimum 1 so same-day flips don't divide by zero. */
+  function daysHeld(it) {
+    const d = daysBetween(it.buyDate, isClosed(it) ? (it.saleDate || today()) : today());
+    return d === null ? null : Math.max(1, d);
+  }
+
+  /** Capital velocity: profit ÷ cost ÷ days, as a % per day. Closed items only. */
+  function itemRoiPerDay(it) {
+    const p = itemProfit(it), c = itemCost(it), d = daysHeld(it);
+    if (p === null || !c || d === null) return null;
+    return p / c / d * 100;
+  }
+
+  /**
+   * Repricing rule: drop 5–7% at 7 days listed, again at 14.
+   * Returns 14, 7 or null depending on which drop is due and hasn't been done yet.
+   * A drop counts as done if the list price was changed on/after that day.
+   */
+  function repriceDue(it) {
+    if (it.status !== 'listed') return null;
+    const listed = it.listedDate || it.buyDate;
+    const days = daysBetween(listed, today());
+    if (days === null) return null;
+    const repricedAt = it.lastRepriced ? daysBetween(listed, it.lastRepriced) : -1;
+    if (days >= 14 && repricedAt < 14) return 14;
+    if (days >= 7 && repricedAt < 7) return 7;
+    return null;
+  }
+
+  const COMPS_STALE_DAYS = 30;
+  const compsStale = (date) => !!date && daysBetween(date, today()) > COMPS_STALE_DAYS;
 
   function computeStats(items, expenses, settings) {
     const closed = items.filter(isClosed);
@@ -104,6 +138,20 @@
 
     const reserveTarget = num(settings.startingCapital) * num(settings.reservePct) / 100;
 
+    // Capital-weighted ROI per day: total profit ÷ total (cost × days held). Big slow items weigh more than small quick ones.
+    const velocity = (list) => {
+      let p = 0, cd = 0;
+      for (const i of list) { const c = itemCost(i), d = daysHeld(i); if (!c || d === null) continue; p += itemProfit(i); cd += c * d; }
+      return cd ? p / cd * 100 : NaN;
+    };
+    const roiPerDay = velocity(closed);
+
+    // Conversion: sales ÷ enquiries, over items where enquiries were actually tracked.
+    const tracked = items.filter((i) => num(i.enquiries) > 0);
+    const enquiries = tracked.reduce((s, i) => s + num(i.enquiries), 0);
+    const trackedSales = tracked.filter((i) => i.status === 'sold' || i.status === 'parted').length;
+    const conversion = enquiries ? trackedSales / enquiries * 100 : NaN;
+
     const byCat = {};
     for (const i of items) {
       const c = i.category || 'Other';
@@ -122,6 +170,7 @@
       roi: b.cost ? b.profit / b.cost * 100 : NaN,
       avgDays: b.days.length ? b.days.reduce((x, y) => x + y, 0) / b.days.length : NaN,
       defectRate: b.count ? b.defects / b.count * 100 : NaN,
+      roiPerDay: velocity(closed.filter((i) => (i.category || 'Other') === b.category)),
     })).sort((a, b) => b.profit - a.profit);
 
     return {
@@ -132,7 +181,7 @@
       inventoryCost, cash, equity, avgHold, avgProfit, avgRoi,
       defectRate: items.length ? defects / items.length * 100 : NaN,
       winRate: closed.length ? wins / closed.length * 100 : NaN,
-      turnover, reserveTarget, categories,
+      turnover, reserveTarget, categories, roiPerDay, conversion, enquiries, trackedSales,
       returnOnCapital: num(settings.startingCapital) ? netProfit / num(settings.startingCapital) * 100 : NaN,
     };
   }
@@ -145,11 +194,12 @@
     const lines = [
       `Starting capital: ${fmt.money(num(s.startingCapital))} | Cash now: ${fmt.money(st.cash)} | Inventory at cost: ${fmt.money(st.inventoryCost)} (${st.openCount} items)`,
       `Closed deals: ${st.closedCount} | Revenue: ${fmt.money(st.revenue)} | Net profit: ${fmt.money(st.netProfit)} | Gross margin: ${fmt.pct(st.grossMargin)}`,
-      `Avg profit/item: ${fmt.money(st.avgProfit)} | Avg ROI/item: ${fmt.pct(st.avgRoi)} | Avg days to sell: ${fmt.num(st.avgHold, 0)} | Defect rate: ${fmt.pct(st.defectRate)} | Win rate: ${fmt.pct(st.winRate)}`,
+      `Avg profit/item: ${fmt.money(st.avgProfit)} | Avg ROI/item: ${fmt.pct(st.avgRoi)} | ROI per day (capital-weighted): ${fmt.pct(st.roiPerDay, 2)} | Avg days to sell: ${fmt.num(st.avgHold, 0)} | Defect rate: ${fmt.pct(st.defectRate)} | Win rate: ${fmt.pct(st.winRate)}`,
+      `Enquiry conversion: ${Number.isFinite(st.conversion) ? `${fmt.pct(st.conversion)} (${st.trackedSales} sales from ${st.enquiries} enquiries)` : 'not tracked yet'}`,
     ];
     const cats = st.categories.filter((c) => c.closed > 0).slice(0, 6);
     if (cats.length) {
-      lines.push('By category: ' + cats.map((c) => `${c.category} — ${c.closed} sold, ${fmt.money(c.profit)} profit, ${fmt.pct(c.margin, 0)} margin, ~${fmt.num(c.avgDays, 0)} days`).join('; '));
+      lines.push('By category: ' + cats.map((c) => `${c.category} — ${c.closed} sold, ${fmt.money(c.profit)} profit, ${fmt.pct(c.margin, 0)} margin, ${fmt.pct(c.roiPerDay, 2)}/day, ~${fmt.num(c.avgDays, 0)} days`).join('; '));
     }
     return lines.join('\n');
   }
@@ -236,5 +286,5 @@
 
   document.addEventListener('DOMContentLoaded', () => { mountNav(); setupTabs(); });
 
-  window.FD = { store, uid, num, today, daysBetween, fmt, esc, CATEGORIES, STATUSES, itemCost, itemProfit, isClosed, computeStats, businessSnapshot, toast, copyText, download, DEFAULT_SETTINGS };
+  window.FD = { store, uid, num, today, daysBetween, fmt, esc, CATEGORIES, STATUSES, itemCost, itemProfit, isClosed, computeStats, daysHeld, itemRoiPerDay, repriceDue, compsStale, COMPS_STALE_DAYS, businessSnapshot, toast, copyText, download, DEFAULT_SETTINGS };
 })();

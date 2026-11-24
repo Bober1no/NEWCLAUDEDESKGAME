@@ -17,7 +17,7 @@
     <p><strong>No data yet.</strong> Set your starting capital below, then log your first purchase in <a href="inventory.html">Inventory</a>. You can also <button class="btn btn-sm" id="loadDemo" type="button">load demo data</button> to see how it works.</p>
   </div>
 
-  <div class="grid grid-4" id="tiles"></div>
+  <div class="grid grid-5" id="tiles"></div>
 
   <div class="grid grid-2 mt">
     <div class="card">
@@ -61,6 +61,7 @@
       <div class="field"><label for="state">State</label><select id="state"><option>VIC</option><option>NSW</option><option>QLD</option><option>WA</option><option>SA</option><option>TAS</option><option>ACT</option><option>NT</option></select></div>
       <div class="field"><label for="fbCity">FB Marketplace city slug</label><input type="text" id="fbCity" placeholder="melbourne"><div class="hint">The bit after /marketplace/ in the URL</div></div>
       <div class="field"><label for="radiusKm">Search radius (km)</label><input type="number" id="radiusKm" min="1"></div>
+      <div class="field"><label for="agingDays">Aging alert after (days)</label><input type="number" id="agingDays" min="1"><div class="hint">Warn when unsold stock is older than this</div></div>
       <div class="field"><label for="transport">Transport</label><select id="transport"><option value="car">Car</option><option value="public">Public transport</option><option value="bike">Bike / walking</option><option value="shipping">Shipping only</option></select></div>
     </form>
     <small>Changes save automatically.</small>

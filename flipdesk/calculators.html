@@ -29,7 +29,7 @@
         <h2>Max buy price</h2>
         <div class="formula">MaxBuy = ExpectedSale − Repairs − SellingCosts − TargetProfit − RiskAllowance</div>
         <div class="row">
-          <div class="field"><label for="mbSale">Expected sale price ($)</label><input type="number" id="mbSale" value="800"><div class="hint">From SOLD comps, not asking prices</div></div>
+          <div class="field"><label for="mbSale">Expected sale price ($)</label><input type="number" id="mbSale" value="800"><div class="hint" id="mbSaleSrc">Typed in by hand. Paste comps below to replace this with real sold prices.</div></div>
           <div class="field"><label for="mbRepair">Repairs / parts / cleaning ($)</label><input type="number" id="mbRepair" value="30"></div>
           <div class="field"><label for="mbSell">Selling costs ($)</label><input type="number" id="mbSell" value="20"><div class="hint">Fees, fuel, packaging</div></div>
         </div>
@@ -46,6 +46,30 @@
         <dl class="kv mt" id="mbBreak"></dl>
         <div id="mbVerdict"></div>
       </div>
+    </div>
+
+    <div class="split mt">
+      <div class="card">
+        <div class="card-head"><h2>Paste comps</h2><a class="btn btn-sm" href="prompt.html?mode=comps" id="compsPromptLink">Get a comps prompt</a></div>
+        <p class="muted" style="font-size:.88rem">1. Build a Comps prompt in the Prompt Builder and paste it into Claude. 2. Paste Claude's whole reply here, extra text and all. 3. The site pulls out the JSON, checks it, and fills in expected sale, repairs and risk.</p>
+        <div class="field">
+          <label for="compsFor">Save these comps against</label>
+          <select id="compsFor"><option value="">Standalone lookup (not bought yet)</option></select>
+        </div>
+        <div class="field"><label for="compsPaste">Claude's reply</label><textarea id="compsPaste" rows="9" spellcheck="false" placeholder='Paste the whole reply, e.g.
+```json
+{ "fdComps": 1, "item": "...", "sold": [ ... ] }
+```' style="font-family:var(--mono);font-size:.8rem"></textarea></div>
+        <div class="btn-row"><button class="btn btn-primary" type="button" id="compsApply">Check &amp; apply</button><button class="btn btn-sm" type="button" id="compsClear">Clear</button></div>
+      </div>
+      <div class="card">
+        <div id="compsResult"><p class="muted">Results show up here once you paste comps.</p></div>
+      </div>
+    </div>
+
+    <div class="card mt">
+      <div class="card-head"><h2>Saved comps</h2><small>Comps more than 30 days old are flagged stale</small></div>
+      <div class="table-wrap"><table id="compsTable"></table></div>
     </div>
   </section>
 
@@ -137,6 +161,7 @@
 </main>
 <script src="assets/js/core.js"></script>
 <script src="assets/js/charts.js"></script>
+<script src="assets/js/comps.js"></script>
 <script src="assets/js/calculators.js"></script>
 </body>
 </html>

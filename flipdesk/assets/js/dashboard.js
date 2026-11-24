@@ -1,8 +1,8 @@
 /* Dashboard: KPIs, charts, alerts, settings. */
 (function () {
-  const { store, fmt, esc, num, today, daysBetween, itemCost, itemProfit, isClosed, computeStats } = FD;
+  const { store, fmt, esc, num, today, daysBetween, itemCost, itemProfit, isClosed, computeStats, repriceDue, compsStale } = FD;
   const $ = (id) => document.getElementById(id);
-  const SETTING_FIELDS = ['businessName', 'startingCapital', 'reservePct', 'targetMarginPct', 'minProfit', 'riskPct', 'suburb', 'state', 'fbCity', 'radiusKm', 'transport'];
+  const SETTING_FIELDS = ['businessName', 'startingCapital', 'reservePct', 'targetMarginPct', 'minProfit', 'riskPct', 'suburb', 'state', 'fbCity', 'radiusKm', 'transport', 'agingDays'];
 
   function tile(label, value, sub, cls = '') {
     return `<div class="card stat"><div class="label">${label}</div><div class="value ${cls}">${value}</div><div class="sub">${sub}</div></div>`;
@@ -22,7 +22,9 @@
       tile('Business value', fmt.money(st.equity), 'Cash + inventory at cost'),
       tile('Gross margin', fmt.pct(st.grossMargin), `Target ${s.targetMarginPct}% · revenue ${fmt.money(st.revenue)}`, Number.isFinite(st.grossMargin) && st.grossMargin < num(s.targetMarginPct) ? 'neg' : ''),
       tile('Avg profit / item', fmt.money(st.avgProfit), `Avg ROI ${fmt.pct(st.avgRoi)} · win rate ${fmt.pct(st.winRate, 0)}`),
+      tile('ROI per day', fmt.pct(st.roiPerDay, 2), Number.isFinite(st.roiPerDay) ? `Profit ÷ cost ÷ days · ≈${fmt.pct(st.roiPerDay * 30, 0)}/month` : 'Profit ÷ cost ÷ days, closed deals', st.roiPerDay < 0 ? 'neg' : ''),
       tile('Avg days to sell', fmt.num(st.avgHold, 0), `Turnover ~${fmt.num(st.turnover, 1)}× / yr`),
+      tile('Conversion', fmt.pct(st.conversion), st.enquiries ? `${st.trackedSales} sale${st.trackedSales === 1 ? '' : 's'} from ${st.enquiries} enquiries` : 'Log enquiries with +1 in Inventory'),
       tile('Defect rate', fmt.pct(st.defectRate), `Risk allowance ${s.riskPct}% of sale`, st.defectRate > num(s.riskPct) * 1.5 ? 'neg' : ''),
     ].join('');
 
@@ -38,16 +40,28 @@
     const cats = st.categories.filter((c) => c.closed > 0);
     FDCharts.hbars($('catChart'), cats.map((c) => ({ label: c.category, value: c.profit, detail: `${fmt.money(c.profit)} from ${c.closed} sale${c.closed === 1 ? '' : 's'} · ${fmt.pct(c.margin, 0)} margin` })), { format: (v) => fmt.money(v) });
 
-    $('catTable').innerHTML = `<thead><tr><th>Category</th><th class="num">Items</th><th class="num">Sold</th><th class="num">Revenue</th><th class="num">Profit</th><th class="num">Margin</th><th class="num">ROI</th><th class="num">Avg days</th><th class="num">Defects</th></tr></thead><tbody>${
-      st.categories.length ? st.categories.map((c) => `<tr><td>${esc(c.category)}</td><td class="num">${c.count}</td><td class="num">${c.closed}</td><td class="num">${fmt.money(c.revenue)}</td><td class="num ${c.profit < 0 ? 'neg' : ''}">${fmt.money(c.profit)}</td><td class="num">${fmt.pct(c.margin, 0)}</td><td class="num">${fmt.pct(c.roi, 0)}</td><td class="num">${fmt.num(c.avgDays, 0)}</td><td class="num">${fmt.pct(c.defectRate, 0)}</td></tr>`).join('')
-        : '<tr><td colspan="9" class="muted">No items logged yet.</td></tr>'
+    $('catTable').innerHTML = `<thead><tr><th>Category</th><th class="num">Items</th><th class="num">Sold</th><th class="num">Revenue</th><th class="num">Profit</th><th class="num">Margin</th><th class="num">ROI</th><th class="num">ROI/day</th><th class="num">Avg days</th><th class="num">Defects</th></tr></thead><tbody>${
+      st.categories.length ? st.categories.map((c) => `<tr><td>${esc(c.category)}</td><td class="num">${c.count}</td><td class="num">${c.closed}</td><td class="num">${fmt.money(c.revenue)}</td><td class="num ${c.profit < 0 ? 'neg' : ''}">${fmt.money(c.profit)}</td><td class="num">${fmt.pct(c.margin, 0)}</td><td class="num">${fmt.pct(c.roi, 0)}</td><td class="num ${c.roiPerDay < 0 ? 'neg' : ''}">${fmt.pct(c.roiPerDay, 2)}</td><td class="num">${fmt.num(c.avgDays, 0)}</td><td class="num">${fmt.pct(c.defectRate, 0)}</td></tr>`).join('')
+        : '<tr><td colspan="10" class="muted">No items logged yet.</td></tr>'
     }</tbody>`;
 
     // Alerts
     const alerts = [];
     if (items.length && st.cash < st.reserveTarget) alerts.push(['bad', `Cash (${fmt.money(st.cash)}) is below your reserve target (${fmt.money(st.reserveTarget)}). Stop buying and sell stock first.`]);
-    const stale = items.filter((i) => !isClosed(i) && daysBetween(i.buyDate, today()) > 30);
-    if (stale.length) alerts.push(['warn', `${stale.length} item${stale.length === 1 ? ' has' : 's have'} been held for over 30 days: ${stale.slice(0, 4).map((i) => esc(i.name)).join(', ')}. Cut the price or use the Price my item mode in the <a href="prompt.html?mode=price">Prompt Builder</a>. What you paid doesn't matter now (sunk cost).`]);
+    const aging = num(s.agingDays) || 14;
+    const names = (list) => list.slice(0, 4).map((i) => esc(i.name)).join(', ') + (list.length > 4 ? ` and ${list.length - 4} more` : '');
+    const old = items.filter((i) => !isClosed(i) && daysBetween(i.buyDate, today()) > aging);
+    if (old.length) alerts.push(['bad', `${old.length} item${old.length === 1 ? ' has' : 's have'} been held for over ${aging} days: ${names(old)}. That cash should be in the next deal. Cut the price or use the Price my item mode in the <a href="prompt.html?mode=price">Prompt Builder</a>. What you paid doesn't matter now (sunk cost).`]);
+    const drop14 = items.filter((i) => repriceDue(i) === 14), drop7 = items.filter((i) => repriceDue(i) === 7);
+    if (drop14.length) alerts.push(['bad', `Second price drop due (14+ days listed): ${names(drop14)}. Drop another 5–7%, or rewrite the listing if it isn't getting messages.`]);
+    if (drop7.length) alerts.push(['warn', `Price drop due (7+ days listed): ${names(drop7)}. Drop 5–7%. Editing the list price in Inventory clears this.`]);
+    const listed = items.filter((i) => i.status === 'listed');
+    const quiet = listed.filter((i) => !num(i.enquiries) && daysBetween(i.listedDate || i.buyDate, today()) >= 5);
+    if (quiet.length) alerts.push(['warn', `No messages after 5+ days listed: ${names(quiet)}. Nobody is even asking, so the price is too high for what buyers see, or the title/photos aren't getting clicks. Check comps and use the <a href="listing.html">Listing Writer</a>.`]);
+    const chatty = listed.filter((i) => num(i.enquiries) >= 10);
+    if (chatty.length) alerts.push(['warn', `Lots of messages but no sale: ${names(chatty)}. The price is pulling people in, so something later is losing them: slow replies, awkward pickup, lowballers you're right to refuse, or the item looks worse in person. If the messages are mostly lowball offers, your list price is anchoring them low.`]);
+    const staleComps = items.filter((i) => !isClosed(i) && compsStale(i.compsDate));
+    if (staleComps.length) alerts.push(['warn', `Comps over 30 days old on unsold stock: ${names(staleComps)}. Re-run comps before you set or cut the price.`]);
     const losers = items.filter((i) => isClosed(i) && itemProfit(i) < 0);
     if (losers.length) alerts.push(['warn', `${losers.length} deal${losers.length === 1 ? '' : 's'} lost money, ${fmt.money(losers.reduce((s, i) => s + itemProfit(i), 0))} in total. Look for a pattern: same category, same platform, skipped testing?`]);
     if (Number.isFinite(st.grossMargin) && st.grossMargin < num(s.targetMarginPct)) alerts.push(['warn', `Gross margin of ${fmt.pct(st.grossMargin)} is under your ${s.targetMarginPct}% target. You're either paying too much or selling too cheap.`]);
@@ -84,15 +98,15 @@
     const d = (n) => new Date(Date.now() - n * 86400000).toISOString().slice(0, 10);
     const mk = (o) => Object.assign({ id: FD.uid(), repairCost: 0, sellCost: 0, defect: false, notes: '', source: 'FB Marketplace' }, o);
     store.saveItems([
-      mk({ name: 'RTX 3060 12GB (Gigabyte)', category: 'GPU', status: 'sold', buyPrice: 230, buyDate: d(70), salePrice: 330, saleDate: d(62), sellCost: 5, repairCost: 8, notes: 'Repasted' }),
-      mk({ name: 'Office i5-8500 + GTX 1070 build', category: 'Desktop PC', status: 'sold', buyPrice: 260, buyDate: d(58), salePrice: 520, saleDate: d(41), repairCost: 95, sellCost: 10, notes: 'Added 500GB NVMe + new case fans' }),
-      mk({ name: 'iPhone 12 128GB', category: 'Phone', status: 'sold', buyPrice: 380, buyDate: d(45), salePrice: 470, saleDate: d(39), sellCost: 0 }),
+      mk({ enquiries: 4, name: 'RTX 3060 12GB (Gigabyte)', category: 'GPU', status: 'sold', buyPrice: 230, buyDate: d(70), salePrice: 330, saleDate: d(62), sellCost: 5, repairCost: 8, notes: 'Repasted' }),
+      mk({ enquiries: 7, name: 'Office i5-8500 + GTX 1070 build', category: 'Desktop PC', status: 'sold', buyPrice: 260, buyDate: d(58), salePrice: 520, saleDate: d(41), repairCost: 95, sellCost: 10, notes: 'Added 500GB NVMe + new case fans' }),
+      mk({ enquiries: 3, name: 'iPhone 12 128GB', category: 'Phone', status: 'sold', buyPrice: 380, buyDate: d(45), salePrice: 470, saleDate: d(39), sellCost: 0 }),
       mk({ name: 'RX 580 8GB (untested)', category: 'GPU', status: 'written-off', buyPrice: 60, buyDate: d(40), salePrice: 15, saleDate: d(30), defect: true, notes: 'Artifacting, sold for parts' }),
-      mk({ name: 'Ryzen 5 5600 + B550 combo', category: 'CPU', status: 'sold', buyPrice: 170, buyDate: d(30), salePrice: 255, saleDate: d(19), sellCost: 4 }),
-      mk({ name: 'ThinkPad T480 i5 16GB', category: 'Laptop', status: 'sold', buyPrice: 190, buyDate: d(25), salePrice: 300, saleDate: d(12), repairCost: 35, notes: 'New battery' }),
-      mk({ name: 'Gaming PC R5 3600 / RTX 2070', category: 'Desktop PC', status: 'listed', buyPrice: 520, buyDate: d(16), listPrice: 790, repairCost: 20 }),
-      mk({ name: 'RTX 3070 FE', category: 'GPU', status: 'testing', buyPrice: 340, buyDate: d(3) }),
-      mk({ name: 'iPhone 11 64GB', category: 'Phone', status: 'listed', buyPrice: 230, buyDate: d(38), listPrice: 310, defect: true, notes: 'Battery 78%' }),
+      mk({ enquiries: 5, name: 'Ryzen 5 5600 + B550 combo', category: 'CPU', status: 'sold', buyPrice: 170, buyDate: d(30), salePrice: 255, saleDate: d(19), sellCost: 4 }),
+      mk({ enquiries: 6, name: 'ThinkPad T480 i5 16GB', category: 'Laptop', status: 'sold', buyPrice: 190, buyDate: d(25), salePrice: 300, saleDate: d(12), repairCost: 35, notes: 'New battery' }),
+      mk({ name: 'Gaming PC R5 3600 / RTX 2070', category: 'Desktop PC', status: 'listed', buyPrice: 520, buyDate: d(16), listedDate: d(12), listPrice: 790, repairCost: 20, enquiries: 11, expectedSale: 760, compsDate: d(17) }),
+      mk({ name: 'RTX 3070 FE', category: 'GPU', status: 'testing', buyPrice: 340, buyDate: d(3), expectedSale: 450, compsDate: d(4) }),
+      mk({ name: 'iPhone 11 64GB', category: 'Phone', status: 'listed', buyPrice: 230, buyDate: d(38), listedDate: d(33), listPrice: 310, enquiries: 0, defect: true, notes: 'Battery 78%', expectedSale: 300, compsDate: d(40) }),
     ]);
     store.saveExpenses([
       { id: FD.uid(), date: d(60), desc: 'Thermal paste + isopropyl', amount: 28, category: 'Supplies' },

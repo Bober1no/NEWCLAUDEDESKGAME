@@ -5,6 +5,7 @@
   const MODES = [
     { id: 'hunt', name: 'Deal hunt', desc: 'Find underpriced listings near me' },
     { id: 'evaluate', name: 'Evaluate a listing', desc: 'Should I buy this, and for how much?' },
+    { id: 'comps', name: 'Comps', desc: 'Sold prices as JSON for the Max buy calculator' },
     { id: 'price', name: 'Price my item', desc: 'List price, floor price, listing copy' },
     { id: 'partout', name: 'Part out or sell whole', desc: 'Which way makes more?' },
     { id: 'build', name: 'Build to flip', desc: 'Plan a PC built from used parts' },
@@ -111,6 +112,10 @@
 
   /* ---------- links ---------- */
   function searchTerms(f) {
+    if (f.mode === 'comps') {
+      const q = (f.compsItem || '').replace(/[^\w\s.+-]/g, ' ').replace(/\s+/g, ' ').trim();
+      return q ? [q] : [];
+    }
     if (['evaluate', 'price', 'partout', 'negotiate'].includes(f.mode) && f.listing && f.listing.trim()) {
       // Use the first line of the pasted listing, minus prices and filler, as the comp search.
       const first = f.listing.trim().split('\n')[0]
@@ -132,6 +137,18 @@
     const city = (s.fbCity || 'melbourne').trim().toLowerCase().replace(/\s+/g, '');
     const out = [];
     const budget = num(f.budget);
+    if (f.mode === 'comps') {
+      // Comps always need eBay sold + active, whatever platforms are ticked.
+      return searchTerms(f).flatMap((q) => {
+        const e = encodeURIComponent(q);
+        const l = [
+          { name: `eBay AU sold: ${q}`, url: `https://www.ebay.com.au/sch/i.html?_nkw=${e}&LH_Sold=1&LH_Complete=1&LH_PrefLoc=1&_sop=13` },
+          { name: `eBay AU active: ${q}`, url: `https://www.ebay.com.au/sch/i.html?_nkw=${e}&LH_PrefLoc=1` },
+        ];
+        if (f.access === 'browser') l.push({ name: `FB Marketplace active: ${q}`, url: `https://www.facebook.com/marketplace/${city}/search?query=${e}` });
+        return l;
+      });
+    }
     for (const q of searchTerms(f)) {
       const e = encodeURIComponent(q);
       if (f.platforms.includes('fb')) {
@@ -174,7 +191,8 @@
     if (!open.length) return 'No unsold inventory right now.';
     return open.slice(0, 20).map((i) => {
       const held = daysBetween(i.buyDate, today());
-      return `- ${i.name} [${i.category}] — cost ${fmt.money(itemCost(i))}, status: ${i.status}${i.listPrice ? `, listed at ${fmt.money(num(i.listPrice))}` : ''}${held !== null ? `, held ${held} days` : ''}${i.defect ? ', HAS DEFECT' : ''}${i.notes ? ` (${i.notes})` : ''}`;
+      const listedFor = i.status === 'listed' ? daysBetween(i.listedDate || i.buyDate, today()) : null;
+      return `- ${i.name} [${i.category}] — cost ${fmt.money(itemCost(i))}, status: ${i.status}${i.listPrice ? `, listed at ${fmt.money(num(i.listPrice))}` : ''}${listedFor !== null ? ` for ${listedFor} days, ${num(i.enquiries)} enquiries` : ''}${i.expectedSale ? `, comps say ~${fmt.money(num(i.expectedSale))}${i.compsDate ? ` (${i.compsDate})` : ''}` : ''}${held !== null ? `, held ${held} days` : ''}${i.defect ? ', HAS DEFECT' : ''}${i.notes ? ` (${i.notes})` : ''}`;
     }).join('\n') + (open.length > 20 ? `\n…and ${open.length - 20} more.` : '');
   }
 
@@ -317,7 +335,56 @@ Read what leverage each side has (how long it's been listed, how keen they seem,
     return { task: '', format: '' };
   }
 
+  function buildCompsPrompt(f) {
+    const item = (f.compsItem || '').trim() || '(I haven\'t filled in the item yet. Ask me what it is.)';
+    const cond = f.compsCond || 'Good, fully working';
+    const faults = (f.compsFaults || '').trim();
+    const links = buildLinks(f);
+    const access = {
+      browser: 'Use your browser (Claude Desktop browser or Claude in Chrome). Open the eBay AU sold-listings search below, then the active-listings search, and read the actual results. Read-only: don\'t contact anyone or change anything. If you hit a login wall or captcha, stop and use what you have.',
+      web: 'Use web search and any page fetching you have to reach eBay AU sold listings. If you can\'t reach real listing data, don\'t estimate. Return the empty result described below.',
+      paste: 'I will paste sold listings into this chat. Use only those. If I haven\'t pasted any, return the empty result described below.',
+    }[f.access] || '';
+    const example = {
+      fdComps: 1, item: 'iPhone 12 128GB, cracked back glass', condition: 'Working, cosmetic damage', date: today(),
+      sold: [{ price: 380, date: today(), source: 'eBay AU', note: 'good condition' }],
+      activeCount: 42, soldCount30d: 18, repairEstimate: 40, confidence: 'medium', notes: 'Few sales with damaged backs, adjusted down',
+    };
+    return `# TASK
+Find comparable SOLD prices in Australia for the item below. Reply with ONLY a JSON block in the exact format shown. No other text before or after it. My website parses your reply and does all the maths itself, so don't calculate averages, medians or a recommended price.
+
+# ITEM
+- Item: ${item}
+- Condition: ${cond}
+- Faults / missing: ${faults || 'none stated'}
+- Today: ${today()}
+
+# HOW TO GET THE DATA
+${access}
+- "sold": eBay AU SOLD/completed listings from the last 60 days only (Sold items filter). Up to 20, most recent first. Never asking prices, never "best offer" listings that didn't sell.
+- Match the item closely: same model, storage/VRAM/specs and similar condition. Skip bundles, "for parts" listings (unless my item is for parts), different variants, and listings from overseas.
+- "price" = the final sale price in AUD, excluding postage. If eBay shows a struck-out price with "Best offer accepted", the real accepted price is hidden, so skip that listing.
+- "date" = the sale date shown on the listing (YYYY-MM-DD). "source" = where it sold (e.g. "eBay AU"). "note" = anything that explains the price (condition, included accessories, damage).
+- "activeCount" = how many matching listings are currently for sale on eBay AU${f.access === 'browser' ? ' (add matching Facebook Marketplace listings near me if you can see them)' : ''}. Use null if you can't see it.
+- "soldCount30d" = how many matching sales in the last 30 days. Use null if you can't see it.
+- "repairEstimate" = AUD cost of parts and labour to fix the stated faults so the item sells as working/good. Use 0 if there are no faults.
+- "confidence": "high" (5+ close matches), "medium" (3–4, or close-ish matches), "low" (1–2, or loose matches), "none" (no real data).
+
+# NEVER MAKE ANYTHING UP
+- Only include sales you actually saw. NEVER invent listings, prices or dates, and never fill gaps with "typical" prices from memory.
+- If you can't see real sold data, return "sold": [], "confidence": "none", and explain why in "notes". An empty answer is useful. A made-up one costs me money.
+
+# SEARCH LINKS
+${links.length ? links.map((l) => `- ${l.name}: ${l.url}`).join('\n') : '- (fill in the item to generate links)'}
+
+# EXACT REPLY FORMAT (types matter: numbers are numbers, not strings)
+\`\`\`json
+${JSON.stringify(example, null, 2)}
+\`\`\``;
+  }
+
   function buildPrompt(f) {
+    if (f.mode === 'comps') return buildCompsPrompt(f);
     const s = store.settings();
     const tm = num(f.targetMargin), mp = num(f.minProfit), rp = num(f.riskPct);
     const platforms = PLATFORMS.filter((p) => f.platforms.includes(p.id));
@@ -447,8 +514,11 @@ And include the questions I should ask the seller BEFORE I travel.`);
     if (saved) { writeForm(saved); mode = saved.mode || mode; }
 
     // Allow ?mode=evaluate deep links
-    const qm = new URLSearchParams(location.search).get('mode');
+    const params = new URLSearchParams(location.search);
+    const qm = params.get('mode');
     if (qm && MODES.some((m) => m.id === qm)) mode = qm;
+    if (params.get('item')) $('compsItem').value = params.get('item');
+    if (params.get('id')) $('compsBackLink').href = `calculators.html?item=${encodeURIComponent(params.get('id'))}`;
 
     renderModes();
     $('modes').addEventListener('click', (e) => {
@@ -463,7 +533,8 @@ And include the questions I should ask the seller BEFORE I travel.`);
     $('dlBtn').addEventListener('click', () => download(`flipdesk-prompt-${mode}-${today()}.txt`, update(), 'text/plain'));
     $('saveBtn').addEventListener('click', () => {
       const f = readForm();
-      const title = `${MODES.find((m) => m.id === mode).name}${f.models ? ': ' + f.models.slice(0, 40) : ''}`;
+      const what = mode === 'comps' ? f.compsItem : f.models;
+      const title = `${MODES.find((m) => m.id === mode).name}${what ? ': ' + what.slice(0, 40) : ''}`;
       const list = savedList(); list.unshift({ title, date: today(), form: f }); FD.store.set(SAVED_KEY, list.slice(0, 25));
       renderSaved(); toast('Saved');
     });

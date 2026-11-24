@@ -86,7 +86,9 @@
       const x0 = sx(Math.min(0, r.value)), x1 = sx(Math.max(0, r.value));
       const bar = el('rect', { x: x0, y: y + 7, width: Math.max(2, x1 - x0), height: rowH - 14, rx: 4, fill: r.value < 0 ? 'var(--bad)' : 'var(--chart)' });
       svg.append(bar);
-      const val = el('text', { x: (r.value < 0 ? x0 - 6 : x1 + 6), y: y + rowH / 2 + 4, 'text-anchor': r.value < 0 ? 'end' : 'start', 'font-size': 12, fill: 'var(--text)', 'font-weight': 600 });
+      // Always label to the right: past the bar end for positives, past the zero line for negatives.
+      // Putting negatives on the left collided with the category label.
+      const val = el('text', { x: x1 + 6, y: y + rowH / 2 + 4, 'text-anchor': 'start', 'font-size': 12, fill: 'var(--text)', 'font-weight': 600 });
       val.textContent = format(r.value); svg.append(val);
       const hit = el('rect', { x: 0, y, width: W, height: rowH, fill: 'transparent' });
       hit.addEventListener('mouseenter', () => {

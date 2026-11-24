@@ -31,6 +31,95 @@
     $('mbVerdict').innerHTML = v;
   }
 
+  /* ---------- Comps (paste-back) ---------- */
+  const SPEED_BADGE = { fast: 'sold', slow: 'testing', dead: 'written-off', unknown: '' };
+  const speedBadge = (st) => `<span class="badge ${SPEED_BADGE[st.speed] || ''}">${st.speed}${st.sellThrough !== null ? ' · ' + fmt.pct(st.sellThrough, 0) : ''}</span>`;
+  const staleBadge = (date) => (FDComps.isStale(date) ? ' <span class="badge written-off">stale</span>' : '');
+  const itemName = (id) => (store.items().find((i) => i.id === id) || {}).name;
+
+  function fillFromEntry(entry) {
+    const st = entry.stats, d = entry.data;
+    $('mbSale').value = Math.round(st.expectedSale);
+    $('mbRepair').value = d.repairEstimate;
+    $('mbRisk').value = st.riskPct;
+    $('mbSaleSrc').innerHTML = `From comps: trimmed median of ${st.kept} sale${st.kept === 1 ? '' : 's'}${st.dropped ? ` (${st.dropped} outliers dropped)` : ''}, looked up ${fmt.date(d.date)}.${staleBadge(d.date)}`;
+    maxBuy();
+  }
+
+  function renderCompsResult(entry, warnings) {
+    const st = entry.stats, d = entry.data;
+    const notes = [...(warnings || []), ...st.notes];
+    if (FDComps.isStale(d.date)) notes.unshift(`These comps are from ${fmt.date(d.date)}, more than 30 days ago. Prices move, so run the comps prompt again before buying.`);
+    $('compsResult').innerHTML = `
+      <div class="muted">${esc(d.item)}${d.condition ? ' · ' + esc(d.condition) : ''}</div>
+      <div class="result-big">${fmt.money(st.expectedSale)}</div>
+      <div class="muted" style="margin-bottom:10px">Expected sale: trimmed median of sold prices</div>
+      <dl class="kv">
+        <dt>Sales used</dt><dd>${st.kept} of ${st.n}${st.dropped ? ` (top/bottom ${st.dropped / 2} dropped)` : ''}</dd>
+        <dt>Range</dt><dd>${fmt.money(st.min)} – ${fmt.money(st.max)}</dd>
+        <dt>Sell-through (30d)</dt><dd>${speedBadge(st)}</dd>
+        <dt>Sold 30d / active</dt><dd>${d.soldCount30d ?? '?'} / ${d.activeCount ?? '?'}</dd>
+        <dt>Repair estimate</dt><dd>${fmt.money(d.repairEstimate)}</dd>
+        <dt>Risk allowance</dt><dd class="${st.riskBumped ? 'neg' : ''}">${st.riskPct}%${st.riskBumped ? ` (+${FDComps.RISK_BUMP})` : ''}</dd>
+        <dt>Claude's confidence</dt><dd>${esc(d.confidence)}</dd>
+        <dt>Looked up</dt><dd>${fmt.date(d.date)}${staleBadge(d.date)}</dd>
+      </dl>
+      ${d.notes ? `<p class="muted mt" style="font-size:.85rem">Claude's note: ${esc(d.notes)}</p>` : ''}
+      ${notes.map((n) => `<div class="callout warn"><p>${esc(n)}</p></div>`).join('')}
+      <div class="callout good"><p>Max buy updated. ${entry.itemId ? `Saved against <strong>${esc(itemName(entry.itemId) || 'item')}</strong> in Inventory.` : 'Saved as a standalone lookup.'}</p></div>
+      ${entry.itemId ? '' : `<a class="btn btn-primary btn-sm" href="inventory.html?comps=${entry.id}">Log purchase with these comps</a>`}`;
+  }
+
+  function renderCompsError(r) {
+    $('compsResult').innerHTML = `<div class="callout bad"><p><strong>Not applied. Nothing was changed.</strong></p><ul style="margin:6px 0 0;padding-left:1.2em">${r.errors.map((e) => `<li>${esc(e)}</li>`).join('')}</ul></div>
+      ${(r.warnings || []).map((w) => `<div class="callout warn"><p>${esc(w)}</p></div>`).join('')}`;
+  }
+
+  function renderCompsTable() {
+    const all = FDComps.list();
+    $('compsTable').innerHTML = `<thead><tr><th>Item</th><th>Looked up</th><th class="num">Expected sale</th><th class="num">Sales</th><th>Sell-through</th><th>Confidence</th><th>Linked to</th><th></th></tr></thead><tbody>${
+      all.length ? all.slice(0, 30).map((c) => `<tr>
+        <td>${esc(c.data.item)}</td><td>${fmt.date(c.data.date)}${staleBadge(c.data.date)}</td>
+        <td class="num">${fmt.money(c.stats.expectedSale)}</td><td class="num">${c.stats.kept}</td><td>${speedBadge(c.stats)}</td><td>${esc(c.data.confidence)}</td>
+        <td>${c.itemId ? esc(itemName(c.itemId) || '(deleted item)') : '<span class="muted">standalone</span>'}</td>
+        <td><button class="btn btn-sm" type="button" data-load="${c.id}">Load</button> <button class="btn btn-sm btn-danger" type="button" data-delcomps="${c.id}">×</button></td></tr>`).join('')
+        : '<tr><td colspan="8" class="muted">No comps saved yet.</td></tr>'
+    }</tbody>`;
+  }
+
+  function initComps() {
+    const open = store.items().filter((i) => !FD.isClosed(i));
+    $('compsFor').innerHTML += open.map((i) => `<option value="${i.id}">${esc(i.name)} (${esc(i.status)})</option>`).join('');
+    const want = new URLSearchParams(location.search).get('item');
+    const syncPromptLink = () => {
+      const it = open.find((i) => i.id === $('compsFor').value);
+      $('compsPromptLink').href = it ? `prompt.html?mode=comps&item=${encodeURIComponent(it.name)}&id=${it.id}` : 'prompt.html?mode=comps';
+    };
+    if (want && open.some((i) => i.id === want)) {
+      $('compsFor').value = want;
+      document.querySelector('.tab[data-tab="maxbuy"]').click();
+    }
+    $('compsFor').addEventListener('change', syncPromptLink);
+    syncPromptLink();
+
+    $('compsApply').addEventListener('click', () => {
+      const r = FDComps.process($('compsPaste').value, store.settings().riskPct);
+      if (!r.ok) { renderCompsError(r); return; }
+      const entry = FDComps.save(r, $('compsFor').value || null);
+      fillFromEntry(entry);
+      renderCompsResult(entry, r.warnings);
+      renderCompsTable();
+      FD.toast('Comps applied and saved');
+    });
+    $('compsClear').addEventListener('click', () => { $('compsPaste').value = ''; $('compsResult').innerHTML = '<p class="muted">Results show up here once you paste comps.</p>'; });
+    $('compsTable').addEventListener('click', (e) => {
+      const l = e.target.closest('[data-load]'), d = e.target.closest('[data-delcomps]');
+      if (l) { const c = FDComps.get(l.dataset.load); if (c) { fillFromEntry(c); renderCompsResult(c, []); window.scrollTo({ top: 0, behavior: 'smooth' }); } }
+      if (d && confirm('Delete these saved comps? Items linked to them keep their expected sale.')) { FDComps.remove(d.dataset.delcomps); renderCompsTable(); }
+    });
+    renderCompsTable();
+  }
+
   /* ---------- Margin ---------- */
   function margin() {
     const cost = num($('mBuy').value), sale = num($('mSell').value), fees = num($('mFees').value), days = Math.max(1, num($('mDays').value));
@@ -200,6 +289,8 @@
     $('mbTarget').value = s.targetMarginPct; $('mbRisk').value = s.riskPct; $('gStart').value = s.startingCapital;
     $('mbMode').addEventListener('change', () => { $('mbTarget').value = $('mbMode').value === 'pct' ? s.targetMarginPct : Math.max(num(s.minProfit), 150); maxBuy(); });
     on(['mbSale', 'mbRepair', 'mbSell', 'mbTarget', 'mbRisk', 'mbAsk'], maxBuy); maxBuy();
+    $('mbSale').addEventListener('input', () => { $('mbSaleSrc').textContent = 'Typed in by hand. Paste comps below to replace this with real sold prices.'; });
+    initComps();
     on(['mBuy', 'mSell', 'mFees', 'mDays'], margin); margin();
     evEvents(); renderEv();
     tableEditor('poTable', () => parts, renderPartout, calcPartout);

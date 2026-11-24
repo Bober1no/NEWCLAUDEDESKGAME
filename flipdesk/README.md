@@ -18,11 +18,19 @@ Then go to http://localhost:8080.
 |---|---|
 | `index.html` Dashboard | KPIs (net profit, cash vs reserve, margin, ROI, days to sell, turnover, defect rate), cumulative profit chart, profit by category, warnings, settings |
 | `prompt.html` Prompt Builder | Builds a detailed prompt to paste into Claude. 8 modes: deal hunt, evaluate a listing, price my item, part-out vs whole, build to flip, market research, negotiation, business review. Includes your settings, business snapshot and inventory, plus search links for FB Marketplace, Gumtree, eBay sold, CeX, StaticICE, PCPartPicker, OzBargain. Save and reload prompts. |
-| `inventory.html` | Ledger of items (buy → test → list → sold) and operating expenses. JSON backup/restore, CSV export. |
+| `inventory.html` | Ledger of items (buy → test → list → sold) and operating expenses. Expected sale + comps date, ROI per day, enquiry counter (+1 button), 7/14-day price-drop badges. JSON backup/restore, CSV export. |
 | `calculators.html` | Max buy price, markup/margin/annualised ROI, expected value comparison, part-out vs whole, stale stock (sunk cost), compound growth |
 | `checklists.html` | Interactive SOPs: before you buy, GPU, desktop PC, phone, laptop, console |
 | `listing.html` | Generates a Marketplace title and description, with pricing-buffer advice and a photo checklist |
 | `learn.html` | Condensed business fundamentals and a 10-question quiz |
+
+## Comps round trip
+
+1. Prompt Builder → **Comps** mode. Enter the exact item, condition and faults, then copy the prompt into Claude.
+2. Claude replies with an `fdComps` JSON block (eBay AU sold listings from the last 60 days, active count, 30-day sold count, repair estimate, confidence). It is told to return `"sold": []` with `"confidence": "none"` rather than make numbers up.
+3. Calculators → Max buy → **Paste comps**. Paste the whole reply. The site finds the JSON (fenced or not), validates every field, and refuses bad data with a list of errors instead of producing numbers.
+4. The site does the maths: trimmed median of sold prices (drops the top and bottom ~10% once there are 5+ sales) becomes expected sale. Sell-through = sold30d ÷ (sold30d + active), labelled fast (>50%), slow (20–50%) or dead (<20%). `repairEstimate` fills repairs. Fewer than 3 sales or low confidence adds 5 points to the risk allowance.
+5. Comps save against an inventory item, or as a standalone lookup you can carry into "Log purchase". Comps older than 30 days are flagged stale.
 
 ## Notes
 

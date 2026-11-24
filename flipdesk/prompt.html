@@ -23,7 +23,7 @@
       <form id="pform" autocomplete="off">
         <div class="card" data-section="items">
           <div class="card-head"><h2>2. What are you looking at?</h2></div>
-          <div class="field">
+          <div class="field" data-show="hunt,evaluate,price,partout,build,research,negotiate,review">
             <label>Categories</label>
             <div class="checks" id="cats"></div>
           </div>
@@ -35,6 +35,15 @@
           <div class="field" data-show="hunt,research,build">
             <label for="exclude">Avoid / exclude</label>
             <input type="text" id="exclude" name="exclude" placeholder="e.g. mining cards, water-damaged phones, iCloud locked, Alienware proprietary">
+          </div>
+          <div data-show="comps">
+            <div class="callout"><p>Claude replies with a JSON block. Paste the whole reply into <strong>Paste comps</strong> on the <a href="calculators.html" id="compsBackLink">Max buy</a> tab. The site checks the data and does the maths itself.</p></div>
+            <div class="field"><label for="compsItem">Item (exact model + variant)</label><input type="text" id="compsItem" name="compsItem" placeholder="e.g. iPhone 12 128GB, RTX 3070 8GB Gigabyte Gaming OC, ThinkPad T480 i5-8350U 16GB"><div class="hint">Storage, VRAM, CPU and RAM change the price a lot. Be exact.</div></div>
+            <div class="row">
+              <div class="field"><label for="compsCond">Condition</label>
+                <select id="compsCond" name="compsCond"><option>Like new</option><option selected>Good, fully working</option><option>Working, cosmetic damage</option><option>Partially working / faulty</option><option>For parts</option></select></div>
+              <div class="field"><label for="compsFaults">Faults / missing items</label><input type="text" id="compsFaults" name="compsFaults" placeholder="e.g. cracked back glass, battery 79%, no charger"></div>
+            </div>
           </div>
           <div class="field" data-show="evaluate,price,partout,negotiate">
             <label for="listing">Paste the listing / item details</label>
@@ -64,13 +73,13 @@
           <div class="field" data-show="review">
             <div class="callout">Review mode always includes your dashboard numbers. Add anything else that matters below.</div>
           </div>
-          <div class="field">
+          <div class="field" data-show="hunt,evaluate,price,partout,build,research,negotiate,review">
             <label for="extra">Anything else Claude should know</label>
             <textarea id="extra" name="extra" rows="3" placeholder="e.g. I have a spare 650W PSU and 16GB DDR4. I can only pick up on weekends. I'm happy to do repasting but not soldering."></textarea>
           </div>
         </div>
 
-        <div class="card" data-section="money">
+        <div class="card" data-section="money" data-show="hunt,evaluate,price,partout,build,research,negotiate,review">
           <div class="card-head"><h2>3. Money and risk</h2><small>Defaults come from your Dashboard settings</small></div>
           <div class="row">
             <div class="field"><label for="budget">Budget for this ($)</label><input type="number" id="budget" name="budget" min="0" step="10"></div>
@@ -136,7 +145,7 @@
           </div>
         </div>
 
-        <div class="card" data-section="output">
+        <div class="card" data-section="output" data-show="hunt,evaluate,price,partout,build,research,negotiate,review">
           <div class="card-head"><h2>5. Output</h2></div>
           <label class="inline-check"><input type="checkbox" id="incSnapshot" checked> Include my business snapshot (cash, margins, defect rate, best categories)</label>
           <label class="inline-check"><input type="checkbox" id="incInventory" checked> Include my current unsold inventory</label>

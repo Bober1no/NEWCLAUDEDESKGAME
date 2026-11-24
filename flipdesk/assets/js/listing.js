@@ -49,13 +49,12 @@
     $('tLen').textContent = `${title.length} characters`;
     $('dOut').textContent = out.join('\n');
 
-    const s = store.settings();
     const gap = price - floor;
     $('pNote').innerHTML = `<dl class="kv">
       <dt>List price</dt><dd>${fmt.money(price)}</dd>
       <dt>Floor</dt><dd>${fmt.money(floor)}</dd>
       <dt>Negotiation buffer</dt><dd>${fmt.money(gap)} (${price ? fmt.pct(gap / price * 100, 0) : '—'})</dd></dl>
-      <p class="muted mt" style="font-size:.85rem">${tone === 'neg' ? (gap / (price || 1) < 0.05 ? 'Your buffer is thin. Buyers expect to knock 5–10% off, so either raise the list price or set it as firm.' : gap / (price || 1) > 0.15 ? 'A buffer that big tells serious buyers you\'re overpriced. Bring the list price down.' : 'A buffer of 5–15% is about right for Marketplace.') : 'Firm pricing only works if your listing clearly beats the others: proof of testing, better photos, faster replies.'} If it doesn't sell in ${s.targetMarginPct > 30 ? '10' : '14'} days, drop it 5–7% rather than leaving it sitting.</p>`;
+      <p class="muted mt" style="font-size:.85rem">${tone === 'neg' ? (gap / (price || 1) < 0.05 ? 'Your buffer is thin. Buyers expect to knock 5–10% off, so either raise the list price or set it as firm.' : gap / (price || 1) > 0.15 ? 'A buffer that big tells serious buyers you\'re overpriced. Bring the list price down.' : 'A buffer of 5–15% is about right for Marketplace.') : 'Firm pricing only works if your listing clearly beats the others: proof of testing, better photos, faster replies.'} Repricing rule: if it hasn't sold after 7 days, drop it 5–7%. Still there at 14 days, drop again or rewrite the listing. The Dashboard reminds you when each drop is due.</p>`;
     $('photos').innerHTML = PHOTOS[t].map((p) => `<li>${p}</li>`).join('');
 
     const st = {}; FIELDS.forEach((f) => { st[f] = $(f).type === 'checkbox' ? $(f).checked : $(f).value; }); store.set(KEY, st);
