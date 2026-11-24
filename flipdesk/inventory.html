@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="en-AU">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Inventory Ledger · FlipDesk</title>
+  <link rel="stylesheet" href="assets/css/style.css">
+</head>
+<body>
+<main>
+  <div class="page-head">
+    <h1>Inventory &amp; Ledger</h1>
+    <p>Log every purchase, repair, sale and expense. If you don't record it, the dashboard can't tell you whether you're making money.</p>
+  </div>
+
+  <div class="tabs" data-tabs="inv">
+    <button class="tab" data-tab="items" type="button">Items</button>
+    <button class="tab" data-tab="expenses" type="button">Operating expenses</button>
+    <button class="tab" data-tab="data" type="button">Backup &amp; data</button>
+  </div>
+
+  <section data-panel-of="inv" data-panel="items" class="tab-panel">
+    <div class="card">
+      <div class="card-head">
+        <div class="btn-row">
+          <button class="btn btn-primary" id="addItem" type="button">+ Log purchase</button>
+          <input type="text" id="search" placeholder="Search…" style="width:180px">
+          <select id="fStatus" style="width:auto"><option value="">All statuses</option></select>
+          <select id="fCat" style="width:auto"><option value="">All categories</option></select>
+        </div>
+        <small id="itemSummary"></small>
+      </div>
+      <div class="table-wrap"><table id="itemsTable"></table></div>
+    </div>
+  </section>
+
+  <section data-panel-of="inv" data-panel="expenses" class="tab-panel" hidden>
+    <div class="card">
+      <div class="card-head"><h2>Add expense</h2><small>Ads, fuel, packaging, tools, software, registration</small></div>
+      <form id="expForm" class="row" autocomplete="off">
+        <div class="field"><label for="eDate">Date</label><input type="date" id="eDate" required></div>
+        <div class="field"><label for="eDesc">Description</label><input type="text" id="eDesc" required placeholder="e.g. Thermal paste"></div>
+        <div class="field"><label for="eCat">Category</label><select id="eCat"><option>Supplies</option><option>Transport</option><option>Advertising</option><option>Equipment</option><option>Shipping</option><option>Software</option><option>Fees &amp; registration</option><option>Other</option></select></div>
+        <div class="field"><label for="eAmt">Amount ($)</label><input type="number" id="eAmt" min="0" step="0.01" required></div>
+        <div class="field" style="align-self:end"><button class="btn btn-primary" type="submit">Add</button></div>
+      </form>
+    </div>
+    <div class="card">
+      <div class="table-wrap"><table id="expTable"></table></div>
+    </div>
+  </section>
+
+  <section data-panel-of="inv" data-panel="data" class="tab-panel" hidden>
+    <div class="grid grid-2">
+      <div class="card">
+        <h2>Export</h2>
+        <p class="muted">Everything is stored in this browser only. Clear your browsing data and it's gone. Back it up.</p>
+        <div class="btn-row">
+          <button class="btn btn-primary" id="exportJson" type="button">Full backup (.json)</button>
+          <button class="btn" id="exportCsv" type="button">Items (.csv)</button>
+          <button class="btn" id="exportExpCsv" type="button">Expenses (.csv)</button>
+        </div>
+        <p class="muted mt" style="font-size:.85rem">The CSVs open in Excel or Google Sheets. Keep them for tax records. The ATO generally expects business records kept for 5 years.</p>
+      </div>
+      <div class="card">
+        <h2>Import / reset</h2>
+        <div class="field"><label for="importFile">Restore from a .json backup</label><input type="file" id="importFile" accept=".json,application/json"></div>
+        <button class="btn btn-danger" id="wipe" type="button">Delete all items &amp; expenses</button>
+      </div>
+    </div>
+  </section>
+
+  <dialog id="itemDialog">
+    <form method="dialog" id="itemForm" autocomplete="off">
+      <div class="dialog-head"><h2 id="dlgTitle">Log purchase</h2><button class="btn btn-sm" value="cancel" formnovalidate>Close</button></div>
+      <input type="hidden" id="iId">
+      <div class="row">
+        <div class="field" style="grid-column:1/-1"><label for="iName">Item</label><input type="text" id="iName" required placeholder="e.g. RTX 3070 FE"></div>
+        <div class="field"><label for="iCat">Category</label><select id="iCat"></select></div>
+        <div class="field"><label for="iStatus">Status</label><select id="iStatus"></select></div>
+        <div class="field"><label for="iSource">Bought from</label><input type="text" id="iSource" list="sources" placeholder="FB Marketplace"></div>
+      </div>
+      <h3 class="mt">Buy side</h3>
+      <div class="row">
+        <div class="field"><label for="iBuy">Purchase price ($)</label><input type="number" id="iBuy" min="0" step="0.01" required></div>
+        <div class="field"><label for="iBuyDate">Purchase date</label><input type="date" id="iBuyDate"></div>
+        <div class="field"><label for="iRepair">Repairs / parts / upgrades ($)</label><input type="number" id="iRepair" min="0" step="0.01"></div>
+      </div>
+      <h3>Sell side</h3>
+      <div class="row">
+        <div class="field"><label for="iList">List price ($)</label><input type="number" id="iList" min="0" step="0.01"></div>
+        <div class="field"><label for="iSale">Sale price ($)</label><input type="number" id="iSale" min="0" step="0.01"></div>
+        <div class="field"><label for="iSaleDate">Sale date</label><input type="date" id="iSaleDate"></div>
+        <div class="field"><label for="iSellCost">Selling costs ($)</label><input type="number" id="iSellCost" min="0" step="0.01"><div class="hint">Fees, shipping, fuel</div></div>
+      </div>
+      <label class="inline-check"><input type="checkbox" id="iDefect"> Turned out to have a defect / wasn't as described</label>
+      <div class="field mt"><label for="iNotes">Notes</label><textarea id="iNotes" rows="2" placeholder="Test results, serial, what you fixed, buyer details"></textarea></div>
+      <div class="callout" id="iPreview"></div>
+      <div class="btn-row"><button class="btn btn-primary" value="save" id="iSave">Save</button><button class="btn btn-danger" value="delete" id="iDelete" formnovalidate>Delete</button></div>
+    </form>
+  </dialog>
+  <datalist id="sources"><option>FB Marketplace</option><option>Gumtree</option><option>eBay</option><option>Cash Converters</option><option>CeX</option><option>GraysOnline</option><option>Garage sale</option><option>Friend / referral</option></datalist>
+</main>
+<script src="assets/js/core.js"></script>
+<script src="assets/js/inventory.js"></script>
+</body>
+</html>

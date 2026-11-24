@@ -1,0 +1,168 @@
+<!doctype html>
+<html lang="en-AU">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Prompt Builder · FlipDesk</title>
+  <link rel="stylesheet" href="assets/css/style.css">
+</head>
+<body>
+<main>
+  <div class="page-head">
+    <h1>Prompt Builder</h1>
+    <p>Pick what you need, fill in what you know, and copy the prompt into a chat with Claude. The prompt includes your settings and business numbers, tells Claude to use sold prices instead of asking prices, and tells it not to make up listings.</p>
+  </div>
+
+  <div class="card">
+    <div class="card-head"><h2>1. What do you need?</h2></div>
+    <div class="modes" id="modes"></div>
+  </div>
+
+  <div class="split mt">
+    <div>
+      <form id="pform" autocomplete="off">
+        <div class="card" data-section="items">
+          <div class="card-head"><h2>2. What are you looking at?</h2></div>
+          <div class="field">
+            <label>Categories</label>
+            <div class="checks" id="cats"></div>
+          </div>
+          <div class="field" data-show="hunt,research,build,trend">
+            <label for="models">Specific models / keywords</label>
+            <input type="text" id="models" name="models" placeholder="e.g. RTX 3070, RX 6700 XT, iPhone 13, Ryzen 5 5600, ThinkPad T480">
+            <div class="hint">Comma-separated. Leave blank to let Claude pick what's undervalued.</div>
+          </div>
+          <div class="field" data-show="hunt,research,build">
+            <label for="exclude">Avoid / exclude</label>
+            <input type="text" id="exclude" name="exclude" placeholder="e.g. mining cards, water-damaged phones, iCloud locked, Alienware proprietary">
+          </div>
+          <div class="field" data-show="evaluate,price,partout,negotiate">
+            <label for="listing">Paste the listing / item details</label>
+            <textarea id="listing" name="listing" rows="7" placeholder="Paste the whole listing text: title, price, description, seller's specs, how long it's been listed, and anything the seller said in messages. Add the URL if you have it."></textarea>
+          </div>
+          <div class="row" data-show="evaluate,price,partout,negotiate">
+            <div class="field"><label for="askPrice">Asking / my price ($)</label><input type="number" id="askPrice" name="askPrice" min="0" step="1"></div>
+            <div class="field"><label for="paidPrice">What I paid ($) — if I own it</label><input type="number" id="paidPrice" name="paidPrice" min="0" step="1"></div>
+            <div class="field"><label for="condition">Condition</label>
+              <select id="condition" name="condition">
+                <option value="">Unknown</option><option>Like new</option><option>Good, fully working</option><option>Working, cosmetic wear</option><option>Partially working / faulty</option><option>Untested</option><option>For parts</option>
+              </select></div>
+          </div>
+          <div class="field" data-show="negotiate">
+            <label for="messages">Message thread so far</label>
+            <textarea id="messages" name="messages" rows="5" placeholder="Paste the conversation with the buyer or seller, oldest first."></textarea>
+          </div>
+          <div class="row" data-show="negotiate">
+            <div class="field"><label for="negSide">I am the</label>
+              <select id="negSide" name="negSide"><option value="buyer">Buyer</option><option value="seller">Seller</option></select></div>
+            <div class="field"><label for="walkAway">My walk-away price ($)</label><input type="number" id="walkAway" name="walkAway" min="0"></div>
+          </div>
+          <div class="field" data-show="build">
+            <label for="buildTarget">Build target</label>
+            <input type="text" id="buildTarget" name="buildTarget" placeholder="e.g. 1080p esports PC that sells for $700–$900, or 1440p AAA for ~$1,200">
+          </div>
+          <div class="field" data-show="review">
+            <div class="callout">Review mode always includes your dashboard numbers. Add anything else that matters below.</div>
+          </div>
+          <div class="field">
+            <label for="extra">Anything else Claude should know</label>
+            <textarea id="extra" name="extra" rows="3" placeholder="e.g. I have a spare 650W PSU and 16GB DDR4. I can only pick up on weekends. I'm happy to do repasting but not soldering."></textarea>
+          </div>
+        </div>
+
+        <div class="card" data-section="money">
+          <div class="card-head"><h2>3. Money and risk</h2><small>Defaults come from your Dashboard settings</small></div>
+          <div class="row">
+            <div class="field"><label for="budget">Budget for this ($)</label><input type="number" id="budget" name="budget" min="0" step="10"></div>
+            <div class="field"><label for="targetMargin">Target margin (%)</label><input type="number" id="targetMargin" name="targetMargin" min="0" max="90"></div>
+            <div class="field"><label for="minProfit">Min profit per item ($)</label><input type="number" id="minProfit" name="minProfit" min="0"></div>
+            <div class="field"><label for="riskPct">Risk allowance (% of sale)</label><input type="number" id="riskPct" name="riskPct" min="0" max="50"></div>
+          </div>
+          <div class="row">
+            <div class="field"><label for="riskTol">Risk tolerance</label>
+              <select id="riskTol" name="riskTol">
+                <option value="low">Low: tested and working only, proof required</option>
+                <option value="medium" selected>Medium: minor faults OK if I can verify</option>
+                <option value="high">High: untested/faulty OK if the price reflects it</option>
+              </select></div>
+            <div class="field"><label for="speed">Sell-speed priority</label>
+              <select id="speed" name="speed">
+                <option value="fast">Fast turnover (sell in &lt;14 days)</option>
+                <option value="balanced" selected>Balanced</option>
+                <option value="max">Max profit, can hold stock</option>
+              </select></div>
+          </div>
+        </div>
+
+        <div class="card" data-section="where">
+          <div class="card-head"><h2>4. Where and how</h2></div>
+          <div class="row">
+            <div class="field"><label for="suburb">Suburb / area</label><input type="text" id="suburb" name="suburb" placeholder="e.g. Box Hill"></div>
+            <div class="field"><label for="state">State</label>
+              <select id="state" name="state"><option>VIC</option><option>NSW</option><option>QLD</option><option>WA</option><option>SA</option><option>TAS</option><option>ACT</option><option>NT</option></select></div>
+            <div class="field"><label for="radius">Radius (km)</label><input type="number" id="radius" name="radius" min="1" max="500"></div>
+            <div class="field"><label for="transport">Transport</label>
+              <select id="transport" name="transport"><option value="car">Car</option><option value="public">Public transport</option><option value="bike">Bike / walking</option><option value="shipping">Shipping only</option></select></div>
+          </div>
+          <div class="field">
+            <label>Platforms to search / price against</label>
+            <div class="checks" id="platforms"></div>
+          </div>
+          <div class="field">
+            <label>My capabilities</label>
+            <div class="checks" id="skills"></div>
+          </div>
+          <div class="row">
+            <div class="field"><label for="freshness">Listing freshness</label>
+              <select id="freshness" name="freshness"><option value="1">Last 24 hours</option><option value="3">Last 3 days</option><option value="7" selected>Last 7 days</option><option value="30">Last 30 days</option></select></div>
+            <div class="field"><label for="count">How many picks</label>
+              <select id="count" name="count"><option>5</option><option selected>10</option><option>15</option><option>20</option></select></div>
+          </div>
+        </div>
+
+        <div class="card" data-section="output">
+          <div class="card-head"><h2>5. Output</h2></div>
+          <label class="inline-check"><input type="checkbox" id="incSnapshot" checked> Include my business snapshot (cash, margins, defect rate, best categories)</label>
+          <label class="inline-check"><input type="checkbox" id="incInventory" checked> Include my current unsold inventory</label>
+          <label class="inline-check"><input type="checkbox" id="incQuestions" checked> Give me questions to ask the seller and red flags to check</label>
+          <label class="inline-check"><input type="checkbox" id="incScripts" checked> Write message / negotiation scripts I can paste</label>
+          <label class="inline-check"><input type="checkbox" id="incLinks" checked> Include the search links from this page so Claude knows where to look</label>
+          <label class="inline-check"><input type="checkbox" id="strict" checked> Strict mode: every price needs a source or is labelled as an estimate</label>
+          <label class="inline-check"><input type="checkbox" id="askFirst"> Let Claude ask me clarifying questions before it starts</label>
+        </div>
+      </form>
+    </div>
+
+    <div class="sticky">
+      <div class="card">
+        <div class="card-head">
+          <h2>Your prompt</h2>
+          <div class="btn-row">
+            <button class="btn btn-primary" id="copyBtn" type="button">Copy prompt</button>
+            <button class="btn btn-sm" id="saveBtn" type="button">Save</button>
+            <button class="btn btn-sm" id="dlBtn" type="button">.txt</button>
+          </div>
+        </div>
+        <div class="muted" id="pmeta" style="font-size:.8rem;margin-bottom:8px"></div>
+        <pre class="output" id="out"></pre>
+      </div>
+
+      <div class="card">
+        <div class="card-head"><h3>Search links</h3><small>Open these yourself. Facebook needs you logged in.</small></div>
+        <div class="links" id="links"></div>
+        <div class="callout warn mt" style="font-size:.82rem">
+          <p>Claude usually can't log in to Facebook Marketplace. If it can't open a page, it should say so, give you the exact searches to run, and wait for you to paste the results. The prompt tells it to do that and not invent listings. If you paste listings, you'll get better advice.</p>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-head"><h3>Saved prompts</h3><button class="btn btn-sm btn-danger" id="clearSaved" type="button">Clear</button></div>
+        <div id="saved" class="links"></div>
+      </div>
+    </div>
+  </div>
+</main>
+<script src="assets/js/core.js"></script>
+<script src="assets/js/prompt.js"></script>
+</body>
+</html>
