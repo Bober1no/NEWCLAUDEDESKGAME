@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="en-AU">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>FlipDesk Dashboard</title>
+  <link rel="stylesheet" href="assets/css/style.css">
+</head>
+<body>
+<main>
+  <div class="page-head">
+    <h1>Dashboard</h1>
+    <p>Your flipping business on one page: cash, profit, margins and how fast stock sells. Numbers come from the <a href="inventory.html">Inventory</a> ledger.</p>
+  </div>
+
+  <div id="emptyState" class="callout hide">
+    <p><strong>No data yet.</strong> Set your starting capital below, then log your first purchase in <a href="inventory.html">Inventory</a>. You can also <button class="btn btn-sm" id="loadDemo" type="button">load demo data</button> to see how it works.</p>
+  </div>
+
+  <div class="grid grid-5" id="tiles"></div>
+
+  <div class="grid grid-2 mt">
+    <div class="card">
+      <div class="card-head"><h2>Cumulative net profit</h2><small>by sale date</small></div>
+      <div class="chart" id="profitChart"></div>
+    </div>
+    <div class="card">
+      <div class="card-head"><h2>Profit by category</h2><small>closed deals</small></div>
+      <div class="chart" id="catChart"></div>
+    </div>
+  </div>
+
+  <div class="card mt">
+    <div class="card-head"><h2>Category performance</h2><small>Move capital toward what makes money quickly</small></div>
+    <div class="table-wrap"><table id="catTable"></table></div>
+  </div>
+
+  <div class="grid grid-2 mt">
+    <div class="card">
+      <div class="card-head"><h2>Warnings</h2></div>
+      <div id="alerts"></div>
+    </div>
+    <div class="card">
+      <div class="card-head"><h2>Capital allocation</h2></div>
+      <dl class="kv" id="buckets"></dl>
+      <div class="progress mt"><div id="reserveBar"></div></div>
+      <small id="reserveNote"></small>
+    </div>
+  </div>
+
+  <div class="card mt">
+    <div class="card-head"><h2>Settings</h2><small>Used by every calculator and the prompt builder</small></div>
+    <form id="settingsForm" class="row" autocomplete="off">
+      <div class="field"><label for="businessName">Business name</label><input type="text" id="businessName"></div>
+      <div class="field"><label for="startingCapital">Starting capital ($)</label><input type="number" id="startingCapital" min="0" step="50"></div>
+      <div class="field"><label for="reservePct">Cash reserve (%)</label><input type="number" id="reservePct" min="0" max="80"></div>
+      <div class="field"><label for="targetMarginPct">Target margin (%)</label><input type="number" id="targetMarginPct" min="0" max="90"></div>
+      <div class="field"><label for="minProfit">Min profit / item ($)</label><input type="number" id="minProfit" min="0"></div>
+      <div class="field"><label for="riskPct">Risk allowance (% of sale)</label><input type="number" id="riskPct" min="0" max="50"></div>
+      <div class="field"><label for="suburb">Suburb</label><input type="text" id="suburb" placeholder="e.g. Box Hill"></div>
+      <div class="field"><label for="state">State</label><select id="state"><option>VIC</option><option>NSW</option><option>QLD</option><option>WA</option><option>SA</option><option>TAS</option><option>ACT</option><option>NT</option></select></div>
+      <div class="field"><label for="fbCity">FB Marketplace city slug</label><input type="text" id="fbCity" placeholder="melbourne"><div class="hint">The bit after /marketplace/ in the URL</div></div>
+      <div class="field"><label for="radiusKm">Search radius (km)</label><input type="number" id="radiusKm" min="1"></div>
+      <div class="field"><label for="agingDays">Aging alert after (days)</label><input type="number" id="agingDays" min="1"><div class="hint">Warn when unsold stock is older than this</div></div>
+      <div class="field"><label for="transport">Transport</label><select id="transport"><option value="car">Car</option><option value="public">Public transport</option><option value="bike">Bike / walking</option><option value="shipping">Shipping only</option></select></div>
+    </form>
+    <small>Changes save automatically.</small>
+  </div>
+</main>
+<script src="assets/js/core.js"></script>
+<script src="assets/js/charts.js"></script>
+<script src="assets/js/dashboard.js"></script>
+</body>
+</html>

@@ -1,0 +1,167 @@
+<!doctype html>
+<html lang="en-AU">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Flip Calculators · FlipDesk</title>
+  <link rel="stylesheet" href="assets/css/style.css">
+</head>
+<body>
+<main>
+  <div class="page-head">
+    <h1>Calculators</h1>
+    <p>Do the maths before you message the seller, not after you've driven 40 minutes. Defaults come from your Dashboard settings.</p>
+  </div>
+
+  <div class="tabs" data-tabs="calc">
+    <button class="tab" data-tab="maxbuy" type="button">Max buy price</button>
+    <button class="tab" data-tab="margin" type="button">Margin / ROI</button>
+    <button class="tab" data-tab="ev" type="button">Expected value</button>
+    <button class="tab" data-tab="partout" type="button">Part-out</button>
+    <button class="tab" data-tab="sunk" type="button">Stale stock</button>
+    <button class="tab" data-tab="growth" type="button">Growth</button>
+  </div>
+
+  <!-- MAX BUY -->
+  <section class="tab-panel" data-panel-of="calc" data-panel="maxbuy">
+    <div class="split">
+      <div class="card">
+        <h2>Max buy price</h2>
+        <div class="formula">MaxBuy = ExpectedSale − Repairs − SellingCosts − TargetProfit − RiskAllowance</div>
+        <div class="row">
+          <div class="field"><label for="mbSale">Expected sale price ($)</label><input type="number" id="mbSale" value="800"><div class="hint" id="mbSaleSrc">Typed in by hand. Paste comps below to replace this with real sold prices.</div></div>
+          <div class="field"><label for="mbRepair">Repairs / parts / cleaning ($)</label><input type="number" id="mbRepair" value="30"></div>
+          <div class="field"><label for="mbSell">Selling costs ($)</label><input type="number" id="mbSell" value="20"><div class="hint">Fees, fuel, packaging</div></div>
+        </div>
+        <div class="row">
+          <div class="field"><label for="mbMode">Target profit as</label><select id="mbMode"><option value="pct">% margin of sale</option><option value="abs">Fixed $</option></select></div>
+          <div class="field"><label for="mbTarget">Target</label><input type="number" id="mbTarget"></div>
+          <div class="field"><label for="mbRisk">Risk allowance (% of sale)</label><input type="number" id="mbRisk"></div>
+        </div>
+        <div class="field"><label for="mbAsk">Seller's asking price ($) (optional)</label><input type="number" id="mbAsk" placeholder="e.g. 650"></div>
+      </div>
+      <div class="card">
+        <div class="muted">Maximum you should pay</div>
+        <div class="result-big" id="mbOut">—</div>
+        <dl class="kv mt" id="mbBreak"></dl>
+        <div id="mbVerdict"></div>
+      </div>
+    </div>
+
+    <div class="split mt">
+      <div class="card">
+        <div class="card-head"><h2>Paste comps</h2><a class="btn btn-sm" href="prompt.html?mode=comps" id="compsPromptLink">Get a comps prompt</a></div>
+        <p class="muted" style="font-size:.88rem">1. Build a Comps prompt in the Prompt Builder and paste it into Claude. 2. Paste Claude's whole reply here, extra text and all. 3. The site pulls out the JSON, checks it, and fills in expected sale, repairs and risk.</p>
+        <div class="field">
+          <label for="compsFor">Save these comps against</label>
+          <select id="compsFor"><option value="">Standalone lookup (not bought yet)</option></select>
+        </div>
+        <div class="field"><label for="compsPaste">Claude's reply</label><textarea id="compsPaste" rows="9" spellcheck="false" placeholder='Paste the whole reply, e.g.
+```json
+{ "fdComps": 1, "item": "...", "sold": [ ... ] }
+```' style="font-family:var(--mono);font-size:.8rem"></textarea></div>
+        <div class="btn-row"><button class="btn btn-primary" type="button" id="compsApply">Check &amp; apply</button><button class="btn btn-sm" type="button" id="compsClear">Clear</button></div>
+      </div>
+      <div class="card">
+        <div id="compsResult"><p class="muted">Results show up here once you paste comps.</p></div>
+      </div>
+    </div>
+
+    <div class="card mt">
+      <div class="card-head"><h2>Saved comps</h2><small>Comps more than 30 days old are flagged stale</small></div>
+      <div class="table-wrap"><table id="compsTable"></table></div>
+    </div>
+  </section>
+
+  <!-- MARGIN -->
+  <section class="tab-panel" data-panel-of="calc" data-panel="margin" hidden>
+    <div class="split">
+      <div class="card">
+        <h2>Markup, margin &amp; ROI</h2>
+        <div class="row">
+          <div class="field"><label for="mBuy">Total cost ($)</label><input type="number" id="mBuy" value="200"></div>
+          <div class="field"><label for="mSell">Sale price ($)</label><input type="number" id="mSell" value="300"></div>
+          <div class="field"><label for="mFees">Selling costs ($)</label><input type="number" id="mFees" value="0"></div>
+          <div class="field"><label for="mDays">Days held</label><input type="number" id="mDays" value="14" min="1"></div>
+        </div>
+        <div class="callout"><p><strong>Markup</strong> = profit ÷ cost. <strong>Margin</strong> = profit ÷ sale price. They are not the same number. A 50% markup is only a 33% margin. Use margin when you compare deals.</p></div>
+      </div>
+      <div class="card">
+        <dl class="kv" id="mOut"></dl>
+        <p class="muted mt" style="font-size:.85rem">Annualised ROI assumes you could repeat the same flip over and over. It shows why a 15% flip done in 5 days beats a 30% flip that took 2 months.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- EV -->
+  <section class="tab-panel" data-panel-of="calc" data-panel="ev" hidden>
+    <div class="card">
+      <div class="card-head"><h2>Expected value: compare up to 3 deals</h2><small>EV = Σ (probability × outcome)</small></div>
+      <div class="grid grid-3" id="evDeals"></div>
+      <div class="callout mt" id="evVerdict"></div>
+    </div>
+  </section>
+
+  <!-- PART OUT -->
+  <section class="tab-panel" data-panel-of="calc" data-panel="partout" hidden>
+    <div class="split">
+      <div class="card">
+        <div class="card-head"><h2>Part out vs sell whole</h2><button class="btn btn-sm" id="poAdd" type="button">+ Part</button></div>
+        <div class="row">
+          <div class="field"><label for="poWhole">Whole-system sale price ($)</label><input type="number" id="poWhole" value="650"></div>
+          <div class="field"><label for="poWholeCost">Selling costs if whole ($)</label><input type="number" id="poWholeCost" value="10"></div>
+          <div class="field"><label for="poRate">Your time ($/hour)</label><input type="number" id="poRate" value="25"></div>
+        </div>
+        <div class="table-wrap"><table id="poTable"></table></div>
+      </div>
+      <div class="card">
+        <dl class="kv" id="poOut"></dl>
+        <div id="poVerdict"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- SUNK -->
+  <section class="tab-panel" data-panel-of="calc" data-panel="sunk" hidden>
+    <div class="split">
+      <div class="card">
+        <h2>Stale stock: what now?</h2>
+        <p class="muted">What you paid is gone either way. Compare your options from today onwards only. This includes the cost of having cash stuck in stock.</p>
+        <div class="row">
+          <div class="field"><label for="skPaid">What you paid ($) (for reference only)</label><input type="number" id="skPaid" value="700"></div>
+          <div class="field"><label for="skRet">Your normal monthly return on capital (%)</label><input type="number" id="skRet" value="10"></div>
+        </div>
+        <div class="table-wrap"><table id="skTable"></table></div>
+        <button class="btn btn-sm mt" id="skAdd" type="button">+ Option</button>
+      </div>
+      <div class="card"><div id="skOut"></div></div>
+    </div>
+  </section>
+
+  <!-- GROWTH -->
+  <section class="tab-panel" data-panel-of="calc" data-panel="growth" hidden>
+    <div class="split">
+      <div class="card">
+        <h2>Compound growth</h2>
+        <div class="row">
+          <div class="field"><label for="gStart">Starting capital ($)</label><input type="number" id="gStart"></div>
+          <div class="field"><label for="gRate">Monthly return (%)</label><input type="number" id="gRate" value="10"></div>
+          <div class="field"><label for="gWithdraw">Monthly withdrawal ($)</label><input type="number" id="gWithdraw" value="0"></div>
+          <div class="field"><label for="gMonths">Months</label><input type="number" id="gMonths" value="12" min="1" max="60"></div>
+        </div>
+        <div class="callout warn"><p>This is an illustration, not a forecast. Real returns are capped by how many good deals exist near you and how many hours you have. Growth slows down long before it goes exponential.</p></div>
+      </div>
+      <div class="card">
+        <div class="muted">Capital after <span id="gN"></span> months</div>
+        <div class="result-big" id="gOut"></div>
+        <div class="chart mt" id="gChart"></div>
+      </div>
+    </div>
+  </section>
+</main>
+<script src="assets/js/core.js"></script>
+<script src="assets/js/charts.js"></script>
+<script src="assets/js/comps.js"></script>
+<script src="assets/js/calculators.js"></script>
+</body>
+</html>

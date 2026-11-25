@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="en-AU">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Listing Writer · FlipDesk</title>
+  <link rel="stylesheet" href="assets/css/style.css">
+</head>
+<body>
+<main>
+  <div class="page-head">
+    <h1>Listing Writer</h1>
+    <p>Buyers pay for confidence. Clear specs, proof of testing and honest disclosure are what let you charge $50 more than the next listing.</p>
+  </div>
+  <div class="split">
+    <form class="card" id="lform" autocomplete="off">
+      <div class="row">
+        <div class="field"><label for="lType">Type</label>
+          <select id="lType"><option value="pc">Gaming PC</option><option value="gpu">Graphics card</option><option value="phone">Phone</option><option value="laptop">Laptop</option><option value="part">Other part</option><option value="console">Console</option></select></div>
+        <div class="field"><label for="lPrice">List price ($)</label><input type="number" id="lPrice" value="850"></div>
+        <div class="field"><label for="lFloor">Lowest you'll accept ($)</label><input type="number" id="lFloor" value="780"></div>
+      </div>
+      <div class="field"><label for="lTitle">Headline item</label><input type="text" id="lTitle" value="Gaming PC RTX 3070 Ryzen 5 5600"><div class="hint">Lead with what buyers search for: GPU model for PCs, model + storage for phones.</div></div>
+      <div class="field"><label for="lSpecs">Specs (one per line)</label><textarea id="lSpecs" rows="7">CPU: Ryzen 5 5600 (6 core / 12 thread)
+GPU: NVIDIA RTX 3070 8GB
+RAM: 16GB DDR4 3200MHz (2x8GB)
+Storage: 1TB NVMe SSD
+Motherboard: MSI B550-A Pro
+PSU: Corsair RM650 (80+ Gold)
+Case: NZXT H510, tempered glass</textarea></div>
+      <div class="field"><label for="lPerf">Performance (one per line)</label><textarea id="lPerf" rows="4">Fortnite 1080p Performance mode: 240+ fps
+Cyberpunk 2077 1440p High + DLSS Quality: ~70 fps
+CS2 1080p High: 300+ fps</textarea></div>
+      <div class="field"><label for="lTests">Testing done (one per line)</label><textarea id="lTests" rows="4">2h OCCT + FurMark stress test, stable
+Max GPU temp 71°C, CPU 68°C
+MemTest86 pass
+Fresh Windows 11 install, drivers up to date</textarea></div>
+      <div class="field"><label for="lFlaws">Honest disclosure (flaws, wear, missing items)</label><textarea id="lFlaws" rows="2" placeholder="e.g. Small scuff on top of case (pictured). No original box.">Small scuff on top of case (pictured). No original boxes.</textarea>
+        <label class="inline-check mt"><input type="checkbox" id="lNoFlaws"> I've inspected it and there's genuinely nothing to declare</label>
+        <div class="hint">Leave this blank without ticking the box and the listing says "used condition, see photos". It never claims it's flawless for you.</div></div>
+      <div class="row">
+        <div class="field"><label for="lArea">Pickup area</label><input type="text" id="lArea" placeholder="e.g. Box Hill"></div>
+        <div class="field"><label for="lDelivery">Delivery</label><select id="lDelivery"><option value="pickup">Pickup only</option><option value="local">Can deliver locally for a fee</option><option value="ship">Can ship (buyer pays)</option></select></div>
+        <div class="field"><label for="lTone">Price stance</label><select id="lTone"><option value="neg">Reasonable offers considered</option><option value="firm">Price firm</option><option value="quick">Quick sale wanted</option></select></div>
+      </div>
+      <label class="inline-check"><input type="checkbox" id="lDemo" checked> Happy to demo it running before payment</label>
+      <label class="inline-check"><input type="checkbox" id="lWarranty"> Offer a short personal warranty (e.g. 7 days DOA)</label>
+    </form>
+    <div class="sticky">
+      <div class="card">
+        <div class="card-head"><h2>Title</h2><button class="btn btn-sm" type="button" data-copy="tOut">Copy</button></div>
+        <pre class="output" id="tOut" style="max-height:none"></pre>
+        <small id="tLen"></small>
+      </div>
+      <div class="card">
+        <div class="callout warn hide" id="flawWarn"><p><strong>No flaws declared.</strong> Fill in the disclosure box, or tick the box if you've checked and there's nothing to declare. A buyer who finds a scratch you didn't mention leaves bad feedback.</p></div>
+        <div class="card-head"><h2>Description</h2><button class="btn btn-primary btn-sm" type="button" data-copy="dOut">Copy</button></div>
+        <pre class="output" id="dOut"></pre>
+      </div>
+      <div class="card">
+        <h3>Pricing logic</h3>
+        <div id="pNote"></div>
+        <h3 class="mt">Photo checklist</h3>
+        <ol id="photos" style="padding-left:1.2em;margin:0"></ol>
+      </div>
+    </div>
+  </div>
+</main>
+<script src="assets/js/core.js"></script>
+<script src="assets/js/listing.js"></script>
+</body>
+</html>
