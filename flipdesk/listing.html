@@ -35,7 +35,9 @@ CS2 1080p High: 300+ fps</textarea></div>
 Max GPU temp 71°C, CPU 68°C
 MemTest86 pass
 Fresh Windows 11 install, drivers up to date</textarea></div>
-      <div class="field"><label for="lFlaws">Honest disclosure (flaws, wear, missing items)</label><textarea id="lFlaws" rows="2">Small scuff on top of case (pictured). No original boxes.</textarea></div>
+      <div class="field"><label for="lFlaws">Honest disclosure (flaws, wear, missing items)</label><textarea id="lFlaws" rows="2" placeholder="e.g. Small scuff on top of case (pictured). No original box.">Small scuff on top of case (pictured). No original boxes.</textarea>
+        <label class="inline-check mt"><input type="checkbox" id="lNoFlaws"> I've inspected it and there's genuinely nothing to declare</label>
+        <div class="hint">Leave this blank without ticking the box and the listing says "used condition, see photos". It never claims it's flawless for you.</div></div>
       <div class="row">
         <div class="field"><label for="lArea">Pickup area</label><input type="text" id="lArea" placeholder="e.g. Box Hill"></div>
         <div class="field"><label for="lDelivery">Delivery</label><select id="lDelivery"><option value="pickup">Pickup only</option><option value="local">Can deliver locally for a fee</option><option value="ship">Can ship (buyer pays)</option></select></div>
@@ -51,6 +53,7 @@ Fresh Windows 11 install, drivers up to date</textarea></div>
         <small id="tLen"></small>
       </div>
       <div class="card">
+        <div class="callout warn hide" id="flawWarn"><p><strong>No flaws declared.</strong> Fill in the disclosure box, or tick the box if you've checked and there's nothing to declare. A buyer who finds a scratch you didn't mention leaves bad feedback.</p></div>
         <div class="card-head"><h2>Description</h2><button class="btn btn-primary btn-sm" type="button" data-copy="dOut">Copy</button></div>
         <pre class="output" id="dOut"></pre>
       </div>

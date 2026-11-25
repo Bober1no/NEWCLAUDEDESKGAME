@@ -3,7 +3,7 @@
   const { store, fmt, num, copyText } = FD;
   const $ = (id) => document.getElementById(id);
   const KEY = 'fd.listing';
-  const FIELDS = ['lType', 'lPrice', 'lFloor', 'lTitle', 'lSpecs', 'lPerf', 'lTests', 'lFlaws', 'lArea', 'lDelivery', 'lTone', 'lDemo', 'lWarranty'];
+  const FIELDS = ['lType', 'lPrice', 'lFloor', 'lTitle', 'lSpecs', 'lPerf', 'lTests', 'lFlaws', 'lNoFlaws', 'lArea', 'lDelivery', 'lTone', 'lDemo', 'lWarranty'];
   const lines = (id) => $(id).value.split('\n').map((s) => s.trim()).filter(Boolean);
 
   const PHOTOS = {
@@ -34,7 +34,10 @@
     if (perf.length) { out.push('PERFORMANCE'); perf.forEach((s) => out.push('• ' + s)); out.push(''); }
     if (tests.length) { out.push('TESTED'); tests.forEach((s) => out.push('✓ ' + s)); out.push(''); }
     out.push('CONDITION');
-    out.push(flaws || 'Excellent condition, no known issues.');
+    // Never invent a "flawless" claim: blank + unticked gets a neutral line and a warning.
+    const noFlaws = $('lNoFlaws').checked;
+    out.push(flaws || (noFlaws ? 'Inspected: no damage or faults found. Check the photos for exact condition.' : 'Used condition. See photos for the exact condition.'));
+    $('flawWarn').classList.toggle('hide', !!flaws || noFlaws);
     out.push('');
     const extras = [];
     if ($('lDemo').checked) extras.push('Happy to show it running before you pay.');

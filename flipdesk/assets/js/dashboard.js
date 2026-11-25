@@ -2,6 +2,7 @@
 (function () {
   const { store, fmt, esc, num, today, daysBetween, itemCost, itemProfit, isClosed, computeStats, repriceDue, compsStale } = FD;
   const $ = (id) => document.getElementById(id);
+  const MIN_DEALS_FOR_MARGIN = 5; // one breakeven sale says nothing about pricing
   const SETTING_FIELDS = ['businessName', 'startingCapital', 'reservePct', 'targetMarginPct', 'minProfit', 'riskPct', 'suburb', 'state', 'fbCity', 'radiusKm', 'transport', 'agingDays'];
 
   function tile(label, value, sub, cls = '') {
@@ -20,7 +21,7 @@
       tile('Cash available', fmt.money(st.cash), `Reserve target ${fmt.money(st.reserveTarget)}`, st.cash < st.reserveTarget ? 'neg' : ''),
       tile('Inventory at cost', fmt.money(st.inventoryCost), `${st.openCount} unsold item${st.openCount === 1 ? '' : 's'}`),
       tile('Business value', fmt.money(st.equity), 'Cash + inventory at cost'),
-      tile('Gross margin', fmt.pct(st.grossMargin), `Target ${s.targetMarginPct}% · revenue ${fmt.money(st.revenue)}`, Number.isFinite(st.grossMargin) && st.grossMargin < num(s.targetMarginPct) ? 'neg' : ''),
+      tile('Gross margin', fmt.pct(st.grossMargin), st.closedCount < MIN_DEALS_FOR_MARGIN ? `Target ${s.targetMarginPct}% · ${st.closedCount}/${MIN_DEALS_FOR_MARGIN} deals before judging` : `Target ${s.targetMarginPct}% · revenue ${fmt.money(st.revenue)}`, st.closedCount >= MIN_DEALS_FOR_MARGIN && Number.isFinite(st.grossMargin) && st.grossMargin < num(s.targetMarginPct) ? 'neg' : ''),
       tile('Avg profit / item', fmt.money(st.avgProfit), `Avg ROI ${fmt.pct(st.avgRoi)} · win rate ${fmt.pct(st.winRate, 0)}`),
       tile('ROI per day', fmt.pct(st.roiPerDay, 2), Number.isFinite(st.roiPerDay) ? `Profit ÷ cost ÷ days · ≈${fmt.pct(st.roiPerDay * 30, 0)}/month` : 'Profit ÷ cost ÷ days, closed deals', st.roiPerDay < 0 ? 'neg' : ''),
       tile('Avg days to sell', fmt.num(st.avgHold, 0), `Turnover ~${fmt.num(st.turnover, 1)}× / yr`),
@@ -64,7 +65,7 @@
     if (staleComps.length) alerts.push(['warn', `Comps over 30 days old on unsold stock: ${names(staleComps)}. Re-run comps before you set or cut the price.`]);
     const losers = items.filter((i) => isClosed(i) && itemProfit(i) < 0);
     if (losers.length) alerts.push(['warn', `${losers.length} deal${losers.length === 1 ? '' : 's'} lost money, ${fmt.money(losers.reduce((s, i) => s + itemProfit(i), 0))} in total. Look for a pattern: same category, same platform, skipped testing?`]);
-    if (Number.isFinite(st.grossMargin) && st.grossMargin < num(s.targetMarginPct)) alerts.push(['warn', `Gross margin of ${fmt.pct(st.grossMargin)} is under your ${s.targetMarginPct}% target. You're either paying too much or selling too cheap.`]);
+    if (st.closedCount >= MIN_DEALS_FOR_MARGIN && Number.isFinite(st.grossMargin) && st.grossMargin < num(s.targetMarginPct)) alerts.push(['warn', `Gross margin of ${fmt.pct(st.grossMargin)} over ${st.closedCount} deals is under your ${s.targetMarginPct}% target. You're either paying too much or selling too cheap.`]);
     const unlisted = items.filter((i) => ['sourcing', 'testing'].includes(i.status) && daysBetween(i.buyDate, today()) > 7);
     if (unlisted.length) alerts.push(['warn', `${unlisted.length} item${unlisted.length === 1 ? ' has' : 's have'} been sitting unlisted for over a week. Stock that isn't listed can't sell.`]);
     if (!alerts.length) alerts.push(['good', items.length ? 'Nothing to flag. Keep logging every deal.' : 'Log some deals and warnings will show up here.']);
